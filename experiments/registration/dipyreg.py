@@ -11,8 +11,8 @@ import dipy.align.imwarp as imwarp
 import dipy.align.metrics as metrics
 from dipy.fixes import argparse as arg
 from dipy.align import VerbosityLevels
-from rcommon import getBaseFileName, readAntsAffine
-from evaluation import compute_jaccard
+from experiments.registration.rcommon import getBaseFileName, readAntsAffine
+import experiments.registration.evaluation as evaluation
 
 parser = arg.ArgumentParser(
     description=
@@ -249,7 +249,7 @@ def compute_jaccard(aname, bname, keep_existing = True):
     B=nib_B.get_data().squeeze().astype(np.int32)
     B=np.copy(B, order='C')
     print("B range:",B.min(), B.max())
-    jacard=np.array(compute_jaccard(A,B))
+    jacard=np.array(evaluation.compute_jaccard(A,B))
     print("Jacard range:",jacard.min(), jacard.max())
     np.savetxt(oname,jacard)
     return jacard

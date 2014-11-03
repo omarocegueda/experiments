@@ -10,8 +10,8 @@
 
 # Configure your environment
 export ANACONDA_BIN_DIR="/home/omar/anaconda/bin"
-export DIPY_DIR = "~/opt/dipy"
-export EXPERIMENTS_DIR = "~/experiments/"
+export DIPY_DIR="$HOME/opt/dipy"
+export EXPERIMENTS_DIR="$HOME/opt/experiments/"
 # ===
 
 export PATH=$ANACONDA_BIN_DIR:$PATH
