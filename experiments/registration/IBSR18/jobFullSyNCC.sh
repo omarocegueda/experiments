@@ -7,9 +7,15 @@
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=02:00:00
 #PBS -N SyNCC
+
+# Configure your environment
+export ANACONDA_BIN_DIR="/home/omar/anaconda/bin"
 export DIPY_DIR = "~/opt/dipy"
 export EXPERIMENTS_DIR = "~/experiments/"
-export PYTHONPATH=$DIPY_DIR:$PYTHONPATH
+# ===
+
+export PATH=$ANACONDA_BIN_DIR:$PATH
+export PYTHONPATH=$DIPY_DIR:$EXPERIMENTS_DIR:$PYTHONPATH
 ###################################
 echo "=====Dipy commit ====="
 (cd $DIPY_DIR && git branch|grep "*")
