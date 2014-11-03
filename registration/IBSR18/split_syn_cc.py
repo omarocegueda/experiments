@@ -1,5 +1,5 @@
 import sys
-import split_tools as st
+import registration.IBSR18.split_tools as st
 if __name__=="__main__":
     required_files = ['../dipyreg.py',
                       'jobFullSyNCC.sh']

@@ -45,7 +45,7 @@ def mkdir_p(path):
         else: raise
 
 
-def split_all_pairs(names, shared_files):
+def split_all_pairs(names, required_files):
     r""" Creates a registration directory for each pair of images in names
     Each element of names is a list of file names.
     The first element of names[i] is the image to be registered, the rest
@@ -145,7 +145,7 @@ def split_script(argv, required_files):
             cleanAnyway=query_yes_no("It seems like you have not collected the results yet. Clean anyway? (y/n)")
             if not cleanAnyway:
                 sys.exit(0)
-        st.clean_working_dirs()
+        clean_working_dirs()
         sys.exit(0)
     #############################Split####################################
     if argv[1]=='s':
@@ -159,7 +159,7 @@ def split_script(argv, required_files):
             print 'Could not open file:', argv[2]
             sys.exit(0)
         names=[line.strip().split() for line in lines]
-        st.split_all_pairs(names, required_files)
+        split_all_pairs(names, required_files)
         sys.exit(0)
     if argv[1]=='s2':#provide two file lists: moving and fixed
         if argc<4:
