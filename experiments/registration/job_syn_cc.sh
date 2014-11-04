@@ -20,8 +20,8 @@ echo "====Experiments commit===="
 (cd $EXPERIMENTS_DIR && git show --stat|grep "commit\|Date")
 echo "======================"
 date
-reference=$(ls reference)
-target=$(ls target)
+reference=$(ls {reference/*.nii.gz,reference/*.img} 2>/dev/null | xargs -n1 basename)
+target=$(ls {target/*.nii.gz,target/*.img} 2>/dev/null | xargs -n1 basename)
 extension="${target##*.}"
 targetbase="${target%.*}"
 targetbase="${targetbase%.*}"

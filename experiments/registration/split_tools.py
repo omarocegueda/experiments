@@ -45,6 +45,12 @@ def mkdir_p(path):
         else: raise
 
 
+def link_image(imname, dir_name):
+    subprocess.call('ln '+imname+' '+dir_name, shell=True)
+    if imname[-4:]=='.img':
+        hdr = imname[:-4] + '.hdr'
+        subprocess.call('ln '+hdr+' '+dir_name, shell=True)
+
 def split_all_pairs(names, required_files):
     r""" Creates a registration directory for each pair of images in names
     Each element of names is a list of file names.
@@ -87,12 +93,12 @@ def split_all_pairs(names, required_files):
             mkdir_p(os.path.join(dir_name,'target'))
             mkdir_p(os.path.join(dir_name,'reference'))
             mkdir_p(os.path.join(dir_name,'warp'))
-            subprocess.call('ln '+target[0]+' '+dir_name+'/target', shell=True)
-            subprocess.call('ln '+reference[0]+' '+dir_name+'/reference', shell=True)
+            link_image(target[0], dir_name+'/target')
+            link_image(reference[0], dir_name+'/reference')
             for f in required_files:
                 subprocess.call('ln '+f+' '+dir_name, shell=True)
             for w in target[1:]:
-                subprocess.call('ln '+w+' '+dir_name+'/warp', shell=True)
+                link_image(w, dir_name+'/warp')
             with open(dir_name+'/jaccard_pairs.lst','w') as f:
                 n = len(target)-1
                 for k in range(n):
@@ -118,14 +124,14 @@ def split_corresponding_pairs(names_moving, names_fixed, required_files):
         mkdir_p(os.path.join(dirName,'target'))
         mkdir_p(os.path.join(dirName,'reference'))
         mkdir_p(os.path.join(dirName,'warp'))
-        subprocess.call('ln '+target+' '+dirName+'/target', shell=True)
-        subprocess.call('ln '+reference+' '+dirName+'/reference', shell=True)
+        link_image(target, dirName+'/target')
+        link_image(reference, dirName+'/reference')
 
         for f in required_files:
             subprocess.call('ln '+f+' '+dir_name, shell=True)
 
         for w in names_moving[i][1:]:
-            subprocess.call('ln '+w+' '+dirName+'/warp', shell=True)
+            link_image(w, dirName+'/warp')
 
 def clean_working_dirs():
     dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
@@ -201,6 +207,8 @@ that contains the results)")
         dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
         for name in dirNames:
             subprocess.call('mv '+os.path.join(name,'*.nii.gz')+' results', shell=True)
+            subprocess.call('mv '+os.path.join(name,'*.img')+' results', shell=True)
+            subprocess.call('mv '+os.path.join(name,'*.hdr')+' results', shell=True)
             subprocess.call('mv '+os.path.join(name,'*.txt')+' results', shell=True)
             subprocess.call('mv '+os.path.join(name,'*.e*')+' results', shell=True)
             subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
