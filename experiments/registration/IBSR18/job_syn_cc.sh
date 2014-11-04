@@ -9,13 +9,8 @@
 #PBS -N SyNCC
 
 # Configure your environment
-export ANACONDA_BIN_DIR="/home/omar/anaconda/bin"
 export DIPY_DIR="$HOME/opt/dipy"
-export EXPERIMENTS_DIR="$HOME/opt/experiments/"
-# ===
-
-export PATH=$ANACONDA_BIN_DIR:$PATH
-export PYTHONPATH=$DIPY_DIR:$EXPERIMENTS_DIR:$PYTHONPATH
+export EXPERIMENTS_DIR="$HOME/opt/experiments"
 ###################################
 echo "=====Dipy commit ====="
 (cd $DIPY_DIR && git branch|grep "*")

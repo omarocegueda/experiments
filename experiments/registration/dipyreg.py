@@ -233,11 +233,11 @@ def print_arguments(params):
 def compute_jaccard(aname, bname, keep_existing = True):
     baseA=getBaseFileName(aname)
     baseB=getBaseFileName(bname)
-    oname="jacard_"+baseA+"_"+baseB+".txt"
+    oname="jaccard_"+baseA+"_"+baseB+".txt"
     if keep_existing and os.path.exists(oname):
-        print('Jacard overlap found. Skipped computation.')
-        jacard=np.loadtxt(oname)
-        return jacard
+        print('Jaccard overlap found. Skipped computation.')
+        jaccard=np.loadtxt(oname)
+        return jaccard
     nib_A=nib.load(aname)
     affineA=nib_A.get_affine()
     A=nib_A.get_data().squeeze().astype(np.int32)
@@ -249,10 +249,10 @@ def compute_jaccard(aname, bname, keep_existing = True):
     B=nib_B.get_data().squeeze().astype(np.int32)
     B=np.copy(B, order='C')
     print("B range:",B.min(), B.max())
-    jacard=np.array(evaluation.compute_jaccard(A,B))
-    print("Jacard range:",jacard.min(), jacard.max())
-    np.savetxt(oname,jacard)
-    return jacard
+    jaccard=np.array(evaluation.compute_jaccard(A,B))
+    print("Jaccard range:",jaccard.min(), jaccard.max())
+    np.savetxt(oname,jaccard)
+    return jaccard
 
 
 def save_registration_results(mapping, params):

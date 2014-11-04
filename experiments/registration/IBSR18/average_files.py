@@ -5,7 +5,7 @@ def average_files():
     ids = ['_segTRI_ana_', '_segTRI_fill_', '_seg_']
 
     for i, id in enumerate(ids):
-        fnames=sorted([name for name in os.listdir(".") if fnmatch.fnmatch(name, 'jacard_IBSR_??'+id+'*.txt')])
+        fnames=sorted([name for name in os.listdir(".") if fnmatch.fnmatch(name, 'jaccard_IBSR_??'+id+'*.txt')])
         print(id, len(fnames))
         scores = []
         max_len = 0
@@ -26,10 +26,10 @@ def average_files():
         means = scores.mean(0)
         stds = scores.std(0)
         print(means)   
-        out = open('jacard_mean_'+str(i+1)+'.txt', 'w')
+        out = open('jaccard_mean_'+str(i+1)+'.txt', 'w')
         out.writelines([str(s)+'\n' for s in means])
 
-        out = open('jacard_std_'+str(i+1)+'.txt', 'w')
+        out = open('jaccard_std_'+str(i+1)+'.txt', 'w')
         out.writelines([str(s)+'\n' for s in stds])
 
 if __name__ == '__main__':
