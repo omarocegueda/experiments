@@ -1,6 +1,6 @@
 if __name__ == "__main__":
     ibsr_base_dir = '/home/omar/data/IBSR_nifti_stripped'
-    with open('names_ibsr_full_gen.txt','w') as f:
+    with open('names_ibsr_full.txt','w') as f:
         for i in range(1,19):
             idx = '0'+str(i) if i<10 else str(i)
             strip_name = ibsr_base_dir + '/IBSR_'+idx+'/IBSR_'+idx+'_ana_strip.nii.gz'
