@@ -158,6 +158,12 @@ def split_script(argv, required_files):
         except IOError:
             print 'Could not open file:', argv[2]
             sys.exit(0)
+        if not os.path.isdir('affine'):
+            print("WARNING: this directory does not contain an 'affine' folder. \
+Precomputed affine transforms should be located in that directory, \
+otherwise all affine registrations will be run. (If you have already precomputed \
+the affine transforms, you may use 'ln -s' to create a symlink here to the folder \
+that contains the results)")
         names=[line.strip().split() for line in lines]
         split_all_pairs(names, required_files)
         sys.exit(0)
