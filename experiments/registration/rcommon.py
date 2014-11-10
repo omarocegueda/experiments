@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import nibabel as nib
+from dipyreg import compute_jaccard, compute_target_overlap
 
 def getBaseFileName(fname):
     base=os.path.basename(fname)
@@ -8,6 +10,17 @@ def getBaseFileName(fname):
         base=noExt
         noExt=os.path.splitext(base)[0]
     return noExt
+
+
+def decompose_path(fname):
+    dirname=os.path.dirname(fname)+'/'
+    base=os.path.basename(fname)
+    no_ext = os.path.splitext(base)[0]
+    while(no_ext !=base):
+        base=no_ext
+        no_ext =os.path.splitext(base)[0]
+    ext = os.path.basename(fname)[len(no_ext):]
+    return dirname, base, ext
 
 
 def readAntsAffine(fname):
@@ -48,3 +61,16 @@ def readAntsAffine(fname):
     T=conversion.dot(T.dot(conversion))
     ###########################################################################################
     return T
+
+
+def compute_scores(pairs_fname = 'jaccard_pairs.lst'):
+    with open(pairs_fname) as input:
+        names = [s.split() for s in input.readlines()]
+        for r in names:
+            moving_dir, moving_base, moving_ext = decompose_path(r[0])
+            fixed_dir, fixed_base, fixed_ext = decompose_path(r[1])
+            warped_name = "warpedDiff_"+moving_base+"_"+fixed_base+".nii.gz"
+            computeJacard(r[2], warped_name)
+
+if __name__=='__main__':
+    compute_scores('jaccard_pairs.lst')
