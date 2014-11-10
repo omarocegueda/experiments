@@ -1,3 +1,22 @@
+from experiments.registration.dipyreg import compute_jaccard, compute_target_overlap
+import os
+def compute_all_scores(lpba_dir):
+    cnt = 0
+    for i in range(1,41):
+        i_idx = str(i) if i>=10 else '0'+str(i)
+        for j in range(1,41):
+            if i == j:
+                continue
+            cnt += 1
+            j_idx = str(j) if j>=10 else '0'+str(j)
+            reference_name = lpba_dir+'/S'+i_idx+'/S'+i_idx+'_strip_seg.img'
+            warped_name = 'warpedDiff_S'+j_idx+'_strip_seg_S'+i_idx+'_strip.nii.gz'
+            if os.path.exists(reference_name) and os.path.exists(warped_name):
+                print(str(cnt)+'/'+str(40*39), reference_name, warped_name)
+                compute_target_overlap(reference_name, warped_name, True)
+                compute_jaccard(reference_name, warped_name, True)
+
+
 def average_files():
     import numpy as np
     import os
