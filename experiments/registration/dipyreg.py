@@ -255,6 +255,31 @@ def compute_jaccard(aname, bname, keep_existing = True):
     return jaccard
 
 
+def compute_target_overlap(aname, bname, keep_existing = True):
+    baseA=getBaseFileName(aname)
+    baseB=getBaseFileName(bname)
+    oname="jaccard_"+baseA+"_"+baseB+".txt"
+    if keep_existing and os.path.exists(oname):
+        print('Target overlap overlap found. Skipped computation.')
+        socres=np.loadtxt(oname)
+        return socres
+    nib_A=nib.load(aname)
+    affineA=nib_A.get_affine()
+    A=nib_A.get_data().squeeze().astype(np.int32)
+    A=np.copy(A, order='C')
+    print("A range:",A.min(), A.max())
+    nib_B=nib.load(bname)
+    newB=nib.Nifti1Image(nib_B.get_data(),affineA)
+    newB.to_filename(bname)
+    B=nib_B.get_data().squeeze().astype(np.int32)
+    B=np.copy(B, order='C')
+    print("B range:",B.min(), B.max())
+    socres=np.array(evaluation.compute_target_overlap(A,B))
+    print("Target overlap range:",socres.min(), socres.max())
+    np.savetxt(oname,socres)
+    return socres    
+
+
 def save_registration_results(mapping, params):
     r'''
     Warp the target image using the obtained deformation field
