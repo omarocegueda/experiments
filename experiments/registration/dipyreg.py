@@ -11,7 +11,7 @@ import dipy.align.imwarp as imwarp
 import dipy.align.metrics as metrics
 from dipy.fixes import argparse as arg
 from dipy.align import VerbosityLevels
-from experiments.registration.rcommon import getBaseFileName, readAntsAffine
+from experiments.registration.rcommon import getBaseFileName, decompose_path, readAntsAffine
 import experiments.registration.evaluation as evaluation
 
 parser = arg.ArgumentParser(
@@ -278,6 +278,16 @@ def compute_target_overlap(aname, bname, keep_existing = True):
     print("Target overlap range:",socres.min(), socres.max())
     np.savetxt(oname,socres)
     return socres    
+
+
+def compute_scores(pairs_fname = 'jaccard_pairs.lst'):
+    with open(pairs_fname) as input:
+        names = [s.split() for s in input.readlines()]
+        for r in names:
+            moving_dir, moving_base, moving_ext = decompose_path(r[0])
+            fixed_dir, fixed_base, fixed_ext = decompose_path(r[1])
+            warped_name = "warpedDiff_"+moving_base+"_"+fixed_base+".nii.gz"
+            computeJacard(r[2], warped_name)
 
 
 def save_registration_results(mapping, params):
