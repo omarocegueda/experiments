@@ -60,7 +60,3 @@ def readAntsAffine(fname):
     T=conversion.dot(T.dot(conversion))
     ###########################################################################################
     return T
-
-
-if __name__=='__main__':
-    compute_scores('jaccard_pairs.lst')
