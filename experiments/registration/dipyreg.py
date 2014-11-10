@@ -258,7 +258,7 @@ def compute_jaccard(aname, bname, keep_existing = True):
 def compute_target_overlap(aname, bname, keep_existing = True):
     baseA=getBaseFileName(aname)
     baseB=getBaseFileName(bname)
-    oname="jaccard_"+baseA+"_"+baseB+".txt"
+    oname="t_overlap_"+baseA+"_"+baseB+".txt"
     if keep_existing and os.path.exists(oname):
         print('Target overlap overlap found. Skipped computation.')
         socres=np.loadtxt(oname)
@@ -314,6 +314,7 @@ def save_registration_results(mapping, params):
                 aname = 'warpedDiff_'+abase+'_'+bbase+'.nii.gz'
                 if os.path.exists(aname) and os.path.exists(cname):
                     compute_jaccard(cname, aname, False)
+                    compute_target_overlap(cname, aname, False)
                 else:
                     print('Pair not found ['+cname+'], ['+aname+']')
     #---finally, the optional output
