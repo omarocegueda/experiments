@@ -292,7 +292,7 @@ def save_registration_results(mapping, params):
     base_fixed = getBaseFileName(params.reference)
     moving = nib.load(params.target).get_data().squeeze().astype(np.float64)
     moving = moving.copy(order='C')
-    warped = np.array(mapping.transform(moving, 'lin')).astype(np.int16)
+    warped = np.array(mapping.transform(moving, 'linear')).astype(np.int16)
     img_warped = nib.Nifti1Image(warped, fixed_affine)
     img_warped.to_filename('warpedDiff_'+base_moving+'_'+base_fixed+'.nii.gz')
     #---warp all volumes in the warp directory using NN interpolation
@@ -301,7 +301,7 @@ def save_registration_results(mapping, params):
         to_warp = nib.load(name).get_data().squeeze().astype(np.int32)
         to_warp = to_warp.copy(order='C')
         base_warp = getBaseFileName(name)
-        warped = np.array(mapping.transform(to_warp, 'nn')).astype(np.int16)
+        warped = np.array(mapping.transform(to_warp, 'nearest')).astype(np.int16)
         img_warped = nib.Nifti1Image(warped, fixed_affine)
         img_warped.to_filename('warpedDiff_'+base_warp+'_'+base_fixed+'.nii.gz')
     #---now the jaccard indices
