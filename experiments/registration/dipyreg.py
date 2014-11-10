@@ -287,7 +287,7 @@ def compute_scores(pairs_fname = 'jaccard_pairs.lst'):
             moving_dir, moving_base, moving_ext = decompose_path(r[0])
             fixed_dir, fixed_base, fixed_ext = decompose_path(r[1])
             warped_name = "warpedDiff_"+moving_base+"_"+fixed_base+".nii.gz"
-            compute_jacard(r[2], warped_name, False)
+            compute_jaccard(r[2], warped_name, False)
             compute_target_overlap(r[2], warped_name, False)
 
 
