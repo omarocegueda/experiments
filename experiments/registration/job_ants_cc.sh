@@ -1,12 +1,12 @@
 #!/bin/bash
 ####################################################
 #Author: Omar Ocegueda (omar@cimat.mx)
-#PBS -l mem=2GB
-#PBS -l pmem=2GB
-#PBS -l vmem=2GB
+#PBS -l mem=3GB
+#PBS -l pmem=3GB
+#PBS -l vmem=3GB
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=02:00:00
-#PBS -N SyNCC
+#PBS -N ANTs-CC
 
 # Configure your environment
 export DIPY_DIR="$HOME/opt/dipy"
@@ -44,7 +44,7 @@ inverseField=${targetbase}_${referencebase}InverseWarp.nii.gz
 if [ -r $deformationField ]; then
     echo "Deformation found. Registration skipped."
 else
-    exe="ANTS 3 -m  CC[reference/$reference,target/$target,1,4] -t SyN[0.25] -a ${affine} -r Gauss[3,0] -o ${targetbase}_${referencebase} -i 10x10x5 --continue-affine false"
+    exe="ANTS 3 -m  CC[reference/$reference,target/$target,1,4] -t SyN[0.25] -a ${affine} -r Gauss[3,0] -o ${targetbase}_${referencebase} -i 100x100x25 --continue-affine false"
     echo " $exe "
     $exe
 fi
