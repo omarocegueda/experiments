@@ -40,6 +40,7 @@ else
 fi
 #Diffeomorphic registration
 deformationField=${targetbase}_${referencebase}Warp.nii.gz
+inverseField=${targetbase}_${referencebase}InverseWarp.nii.gz
 if [ -r $deformationField ]; then
     echo "Deformation found. Registration skipped."
 else
@@ -57,5 +58,7 @@ for towarp in $( ls warp ); do
     WarpImageMultiTransform 3 warp/$towarp $oname $deformationField $affine -R reference/$reference --use-NN
 done
 rm $deformationField
+rm $inverseField
+python -c 'from experiments.registration.dipyreg import *; compute_scores()'
 date
 
