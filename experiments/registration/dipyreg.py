@@ -405,11 +405,27 @@ def register_3d(params):
     moving_affine = moving.get_affine()
     fixed = nib.load(params.reference)
     fixed_affine = fixed.get_affine()
+
+    if params.target[:-3] == 'img': # Analyze: w.r.t the center of the image
+        offset = moving_affine[:3,:3].dot(np.array(moving.shape)//2)
+        moving_affine[:3,3] += offset
+
+    if params.reference[:-3] == 'img': # Analyze: w.r.t the center of the image
+        offset = fixed_affine[:3,:3].dot(np.array(fixed.shape)//2)
+        fixed_affine[:3,3] += offset
+
     print('Affine:', params.affine)
     if not params.affine:
         transform = np.eye(4)
     else:
-        transform = readAntsAffine(params.affine)
+        #http://fieldtrip.fcdonders.nl/faq/how_are_the_different_head_and_mri_coordinate_systems_defined
+        if params.reference[:-3] != params.target[:-3]:
+            print('Unknown pre-align coordinate system')
+            return
+        if params.reference[:-3] == 'img': # Analyze
+            transform = readAntsAffine(params.affine, 'LAS')
+        else: # DICOM
+            transform = readAntsAffine(params.affine, 'LPS')
     init_affine = np.linalg.inv(moving_affine).dot(transform.dot(fixed_affine))
     #Preprocess the data
     moving = moving.get_data().squeeze().astype(np.float64)

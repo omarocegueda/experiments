@@ -22,7 +22,7 @@ def decompose_path(fname):
     return dirname, base, ext
 
 
-def readAntsAffine(fname):
+def readAntsAffine(fname, coordinate_system='LPS'):
     try:
         with open(fname) as f:
             lines=[line.strip() for line in f.readlines()]
@@ -56,7 +56,13 @@ def readAntsAffine(fname):
     T[3,3]=1
     T[:3,3]=b+c-A.dot(c)
     ############This conversion is necessary for compatibility between itk and nibabel#########
-    conversion=np.array([[-1,0,0,0],[0,-1,0,0],[0,0,1,0],[0,0,0,1]], dtype=np.float64)
+    conversion=np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], dtype=np.float64)
+    if coordinate_system[0]=='L':
+        conversion[0, 0] = -1
+    if coordinate_system[0]=='P':
+        conversion[1, 1] = -1
+    if coordinate_system[2]=='I':
+        conversion[2, 2] = -1
     T=conversion.dot(T.dot(conversion))
     ###########################################################################################
     return T
