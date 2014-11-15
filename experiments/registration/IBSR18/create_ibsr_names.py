@@ -1,5 +1,6 @@
+import experiments.registration.dataset_info as info
 if __name__ == "__main__":
-    ibsr_base_dir = '/home/omar/data/IBSR_nifti_stripped'
+    ibsr_base_dir = info.get_ibsr_base_dir()
     with open('names_ibsr_full.txt','w') as f:
         for i in range(1,19):
             idx = '0'+str(i) if i<10 else str(i)

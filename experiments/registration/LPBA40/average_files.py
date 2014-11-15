@@ -1,6 +1,8 @@
 from experiments.registration.dipyreg import compute_jaccard, compute_target_overlap
+from experiments.registration.dataset_info import get_lpba_base_dir
 import os
-def compute_all_scores(lpba_dir):
+def compute_all_scores():
+    lpba_dir = get_lpba_base_dir()
     cnt = 0
     for i in range(1,41):
         i_idx = str(i) if i>=10 else '0'+str(i)

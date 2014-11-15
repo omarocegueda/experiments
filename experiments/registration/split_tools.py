@@ -207,8 +207,6 @@ that contains the results)")
         dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
         for name in dirNames:
             subprocess.call('mv '+os.path.join(name,'*.nii.gz')+' results', shell=True)
-            subprocess.call('mv '+os.path.join(name,'*.img')+' results', shell=True)
-            subprocess.call('mv '+os.path.join(name,'*.hdr')+' results', shell=True)
             subprocess.call('mv '+os.path.join(name,'*.txt')+' results', shell=True)
             subprocess.call('mv '+os.path.join(name,'*.e*')+' results', shell=True)
             subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
