@@ -1,10 +1,13 @@
 import os as _os
+import experiments.registration.rcommon as rcommon
 _ibsr_base_dir = 'Unspecified'
 _lpba_base_dir = 'Unspecified'
 _brainweb_base_dir = 'Unspecified'
 
 def _load_dataset_info():
-    fname = __file__[:-3]+'.txt'
+    dirname, base, ext = rcommon.decompose_path(__file__)
+    fname = dirname + base + '.txt'
+    print(fname)
     if _os.path.isfile(fname):
         with open(fname) as f:
             lines = [s.strip() for s in f.readlines()]
