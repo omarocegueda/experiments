@@ -3,14 +3,13 @@ _ibsr_base_dir = 'Unspecified'
 _lpba_base_dir = 'Unspecified'
 _brainweb_base_dir = 'Unspecified'
 
-
 def _load_dataset_info():
-    fname = 'dataset_info.txt'
+    fname = __file__[:-2]+'txt'
     if _os.path.isfile(fname):
         with open(fname) as f:
             lines = [s.strip() for s in f.readlines()]
             if len(lines) != 3:
-                print('Warning: expected base directories for IBSR, LPBA and Brainweb in "dataset_info.txt" in that order. Found '+str(len(lines))+' lines in file, you may get unexpected results')
+                print('Warning: expected base directories for IBSR, LPBA and Brainweb in '+fname+' in that order. Found '+str(len(lines))+' lines in file, you may get unexpected results')
             else:
                 global _ibsr_base_dir
                 global _lpba_base_dir
@@ -19,7 +18,7 @@ def _load_dataset_info():
                 _lpba_base_dir = lines[1]
                 _brainweb_base_dir = lines[2]
     else:
-        print('Error: file "dataset_info.txt" not found. Expected base directories for IBSR, LPBA and Brainweb in "dataset_info.txt" in that order.')
+        print('Error: file "dataset_info.txt" not found. Expected base directories for IBSR, LPBA and Brainweb in '+fname+' in that order.')
 
 _load_dataset_info()
 
