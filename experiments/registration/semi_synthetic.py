@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import experiments.registration.dataset_info as info
 import nibabel as nib
 import dipy.align.metrics as metrics
@@ -66,14 +67,14 @@ def create_semi_synthetic(params):
     real_nib = nib.load(real_mod1)
     real_aff = real_nib.get_affine()
     real = real_nib.get_data().squeeze()
-    if real_mod1[:-3] == 'img': # Analyze: move reference from center to corner
+    if real_mod1[-3:] == 'img': # Analyze: move reference from center to corner
         offset = real_aff[:3,:3].dot(np.array(real.shape)//2)
         real_aff[:3,3] += offset
 
     t_mod1_nib = nib.load(tmp_mod1)
     t_mod1_aff = t_mod1_nib.get_affine()
     t_mod1 = t_mod1_nib.get_data().squeeze()
-    if tmp_mod1[:-3] == 'img': # Analyze: move reference from center to corner
+    if tmp_mod1[-3:] == 'img': # Analyze: move reference from center to corner
         offset = t_mod1_aff[:3,:3].dot(np.array(t_mod1.shape)//2)
         t_mod1_aff[:3,3] += offset
 
@@ -82,12 +83,12 @@ def create_semi_synthetic(params):
     if not prealign_name:
         prealign = np.eye(4)
     else:
-        if real_mod1[:-3] == 'img': # Analyze
+        if real_mod1[-3:] == 'img': # Analyze
             ref_coordinate_system = 'LAS'
         else: # DICOM
             ref_coordinate_system = 'LPS'
 
-        if tmp_mod1[:-3] == 'img': # Analyze
+        if tmp_mod1[-3:] == 'img': # Analyze
             tgt_coordinate_system = 'LAS'
         else: # DICOM
             tgt_coordinate_system = 'LPS'
@@ -123,7 +124,7 @@ def create_semi_synthetic(params):
         t_mod2 = t_mod2_nib.get_data().squeeze()
 
         oname = 'warpedDiff_'+base_moving+'_'+base_fixed
-        if real_mod1[:-3] == 'img': # Analyze
+        if real_mod1[-3:] == 'img': # Analyze
             oname += '.img'
         else:
             oname += '.nii.gz'
