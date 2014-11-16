@@ -7,7 +7,6 @@ _brainweb_base_dir = 'Unspecified'
 def _load_dataset_info():
     dirname, base, ext = rcommon.decompose_path(__file__)
     fname = dirname + base + '.txt'
-    print(fname)
     if _os.path.isfile(fname):
         with open(fname) as f:
             lines = [s.strip() for s in f.readlines()]
