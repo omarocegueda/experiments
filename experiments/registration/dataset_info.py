@@ -18,7 +18,8 @@ def _load_dataset_info():
                 _ibsr_base_dir = lines[0]
                 _lpba_base_dir = lines[1]
                 _brainweb_base_dir = lines[2]
-
+    else:
+        print('Error: file "dataset_info.txt" not found. Expected base directories for IBSR, LPBA and Brainweb in "dataset_info.txt" in that order.')
 
 _load_dataset_info()
 
