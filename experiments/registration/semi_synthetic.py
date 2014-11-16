@@ -120,7 +120,8 @@ def create_semi_synthetic(params):
     
     #Transform templates (opposite modality)
     base_fixed = getBaseFileName(real_mod1)
-    for tmp_mod2 in tmp_mod2_list:
+    for tmp_mod2 in [tmp_mod1] + tmp_mod2_list:
+        print('Warping: '+tmp_mod2)
         t_mod2_nib = nib.load(tmp_mod2)
         t_mod2_aff = t_mod2_nib.get_affine()
         t_mod2 = t_mod2_nib.get_data().squeeze()
@@ -142,7 +143,7 @@ def create_semi_synthetic(params):
 
         #Apply transfer to real
         
-        real = means[real]
+        real[...] = means[real]
 
         #Save semi_synthetic
         real_nib.to_filename(oname)
