@@ -5,7 +5,7 @@
 #PBS -l pmem=2GB
 #PBS -l vmem=2GB
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=02:00:00
+#PBS -l walltime=03:00:00
 #PBS -N Synthetic
 
 # Configure your environment

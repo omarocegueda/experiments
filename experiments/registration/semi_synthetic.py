@@ -42,9 +42,13 @@ def print_arguments(params):
 
 
 def get_mean_transfer(A, B):
-    means = np.array([B[A == label].mean() for label in range(256) ])
+    means = np.zeros(1 + A.max(), dtype = np.float64)
+    vars = np.zeros(1 + A.max(), dtype = np.float64)
+    for label in range(A.min(), 1 + A.max()):
+        if (A == label).sum() > 0:
+            means[label] = np.array(B[A == label].mean())
+            vars[label] = np.array(B[A == label].var())
     means[np.isnan(means)] = 0
-    vars = np.array([B[A == label].var() for label in range(256) ])
     vars[np.isnan(vars)] = 0
     return means, vars
 
@@ -59,9 +63,6 @@ def create_semi_synthetic(params):
     tmp_mod1 = params.template
     prealign_name = params.prealign
     tmp_mod2_list = [os.path.join(params.warp_dir, name) for name in os.listdir(params.warp_dir)]
-    
-    base_moving = getBaseFileName(tmp_mod1)
-    base_fixed = getBaseFileName(real_mod1)
 
     #Load input images
     real_nib = nib.load(real_mod1)
@@ -99,7 +100,7 @@ def create_semi_synthetic(params):
     similarity_metric = metrics.CCMetric(3, sigma_diff, radius)
 
     #Configure optimizer
-    opt_iter = [1, 1, 0]
+    opt_iter = [100, 100, 50]
     step_length = 0.25
     opt_tol = 1e-5
     inv_iter = 20
@@ -116,13 +117,15 @@ def create_semi_synthetic(params):
     #Run registration
     syn.verbosity = VerbosityLevels.DEBUG
     mapping = syn.optimize(real, t_mod1, real_aff, t_mod1_aff, prealign)
-
+    
     #Transform templates (opposite modality)
+    base_fixed = getBaseFileName(real_mod1)
     for tmp_mod2 in tmp_mod2_list:
         t_mod2_nib = nib.load(tmp_mod2)
         t_mod2_aff = t_mod2_nib.get_affine()
         t_mod2 = t_mod2_nib.get_data().squeeze()
 
+        base_moving = getBaseFileName(tmp_mod2)
         oname = 'warpedDiff_'+base_moving+'_'+base_fixed
         if real_mod1[-3:] == 'img': # Analyze
             oname += '.img'
@@ -130,11 +133,15 @@ def create_semi_synthetic(params):
             oname += '.nii.gz'
 
         warped = mapping.transform(t_mod2)
+        
+        real_nib = nib.load(real_mod1)
+        real = real_nib.get_data().squeeze()
 
         #Compute transfer function
         means, vars = get_mean_transfer(real, warped)
 
         #Apply transfer to real
+        
         real = means[real]
 
         #Save semi_synthetic
@@ -149,3 +156,4 @@ if __name__ == '__main__':
       create_semi_synthetic(params)
       toc = time.clock()
       print('Time elapsed (sec.): ',toc - tic)
+
