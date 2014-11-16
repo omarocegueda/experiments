@@ -1,15 +1,41 @@
+import os as _os
+_ibsr_base_dir = 'Unspecified'
+_lpba_base_dir = 'Unspecified'
+_brainweb_base_dir = 'Unspecified'
+
+
+def _load_dataset_info():
+    fname = 'dataset_info.txt'
+    if _os.path.isfile(fname):
+        with open(fname) as f:
+            lines = [s.strip() for s in f.readlines()]
+            if len(lines) != 3:
+                print('Warning: expected base directories for IBSR, LPBA and Brainweb in "dataset_info.txt" in that order. Found '+str(len(lines))+' lines in file, you may get unexpected results')
+            else:
+                global _ibsr_base_dir
+                global _lpba_base_dir
+                global _brainweb_base_dir
+                _ibsr_base_dir = lines[0]
+                _lpba_base_dir = lines[1]
+                _brainweb_base_dir = lines[2]
+
+
+_load_dataset_info()
 
 
 def get_ibsr_base_dir():
-    return '/home/omar/data/IBSR_nifti_stripped/'
+    global _ibsr_base_dir
+    return _ibsr_base_dir
 
 
 def get_lpba_base_dir():
-    return '/home/omar/data/LPBA40/delineation_space/'
+    global _lpba_base_dir
+    return _lpba_base_dir
 
 
 def get_brainweb_base_dir():
-    return '/home/omar/data/Brainweb/'
+    global _brainweb_base_dir
+    return _brainweb_base_dir
 
 
 def get_ibsr(idx, data):
@@ -46,11 +72,11 @@ def get_lpba(idx, data):
     prefix = lpba_base_dir + 'S'+idx+'/S'+idx
     fname = None
     if data == 'seg':
-        fname = prefix + '_seg.nii.gz'
+        fname = prefix + '_seg.img'
     elif data == 'strip':
-        fname = prefix + '_strip.nii.gz'
+        fname = prefix + '_strip.img'
     elif data == 'strip_seg':
-        fname = prefix + '_strip_seg.nii.gz'
+        fname = prefix + '_strip_seg.img'
     return fname
 
 
