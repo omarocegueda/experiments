@@ -12,12 +12,14 @@ parser = arg.ArgumentParser(
     )
 
 parser.add_argument(
+    'template', action = 'store', metavar = 'template',
+    help = '''Template, reference modality''')
+
+
+parser.add_argument(
     'real', action = 'store', metavar = 'real',
     help = '''Real image, reference modality''')
 
-parser.add_argument(
-    'template', action = 'store', metavar = 'template',
-    help = '''Template, reference modality''')
 
 parser.add_argument(
     'prealign', action = 'store', metavar = 'prealign',
