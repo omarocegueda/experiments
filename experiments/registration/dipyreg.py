@@ -421,13 +421,16 @@ def register_3d(params):
         transform = np.eye(4)
     else:
         #http://fieldtrip.fcdonders.nl/faq/how_are_the_different_head_and_mri_coordinate_systems_defined
-        if params.reference[-3:] != params.target[-3:]:
-            print('Unknown pre-align coordinate system', params.reference[-3:], params.target[-3:])
-            return
         if params.reference[:-3] == 'img': # Analyze
-            transform = readAntsAffine(params.affine, 'LAS')
+            ref_coordinate_system = 'LAS'
         else: # DICOM
-            transform = readAntsAffine(params.affine, 'LPS')
+            ref_coordinate_system = 'LPS'
+
+        if params.target[:-3] == 'img': # Analyze
+            tgt_coordinate_system = 'LAS'
+        else: # DICOM
+            tgt_coordinate_system = 'LPS'
+        transform = readAntsAffine(params.affine, ref_coordinate_system, tgt_coordinate_system)
     init_affine = np.linalg.inv(moving_affine).dot(transform.dot(fixed_affine))
     #Preprocess the data
     moving = (moving-moving.min())/(moving.max()-moving.min())

@@ -120,18 +120,18 @@ def split_corresponding_pairs(names_moving, names_fixed, required_files):
         if (not target) or (not reference):
             continue
         print 'Generating registration folder:', target, reference
-        dirName='0'+str(i+1) if i+1<10 else str(i+1)
-        mkdir_p(os.path.join(dirName,'target'))
-        mkdir_p(os.path.join(dirName,'reference'))
-        mkdir_p(os.path.join(dirName,'warp'))
-        link_image(target, dirName+'/target')
-        link_image(reference, dirName+'/reference')
+        dir_name='0'+str(i+1) if i+1<10 else str(i+1)
+        mkdir_p(os.path.join(dir_name,'target'))
+        mkdir_p(os.path.join(dir_name,'reference'))
+        mkdir_p(os.path.join(dir_name,'warp'))
+        link_image(target, dir_name+'/target')
+        link_image(reference, dir_name+'/reference')
 
         for f in required_files:
             subprocess.call('ln '+f+' '+dir_name, shell=True)
 
         for w in names_moving[i][1:]:
-            link_image(w, dirName+'/warp')
+            link_image(w, dir_name+'/warp')
 
 def clean_working_dirs():
     dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]

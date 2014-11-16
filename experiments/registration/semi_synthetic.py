@@ -5,6 +5,7 @@ import dipy.align.metrics as metrics
 import dipy.align.imwarp as imwarp
 from dipy.align import VerbosityLevels
 from experiments.registration.rcommon import getBaseFileName, decompose_path, readAntsAffine
+from dipy.fixes import argparse as arg
 
 parser = arg.ArgumentParser(
     description=""
@@ -31,9 +32,9 @@ def print_arguments(params):
     Verify all arguments were correctly parsed and interpreted
     '''
     print('========================Parameters========================')
-    print('target: ', params.target)
-    print('reference: ', params.reference)
-    print('affine: ', params.affine)
+    print('real: ', params.real)
+    print('template: ', params.template)
+    print('prealign: ', params.prealign)
     print('warp_dir: ', params.warp_dir)
 
 
@@ -58,24 +59,21 @@ def create_semi_synthetic(params):
     
     base_moving = getBaseFileName(tmp_mod1)
     base_fixed = getBaseFileName(real_mod1)
-    oname = 'warpedDiff_'+base_moving+'_'+base_fixed
-    if real_mod1[:-3] == 'img': # Analyze
-        oname += '.nii.gz'
-    else:
-        oname += '.img'
 
     #Load input images
     real_nib = nib.load(real_mod1)
     real_aff = real_nib.get_affine()
     real = real_nib.get_data().squeeze()
+    if real_mod1[:-3] == 'img': # Analyze: move reference from center to corner
+        offset = real_aff[:3,:3].dot(np.array(real.shape)//2)
+        real_aff[:3,3] += offset
 
     t_mod1_nib = nib.load(tmp_mod1)
     t_mod1_aff = t_mod1_nib.get_affine()
     t_mod1 = t_mod1_nib.get_data().squeeze()
-
-    t_mod2_nib = nib.load(tmp_mod2)
-    t_mod2_aff = t_mod2_nib.get_affine()
-    t_mod2 = t_mod2_nib.get_data().squeeze()
+    if tmp_mod1[:-3] == 'img': # Analyze: move reference from center to corner
+        offset = t_mod1_aff[:3,:3].dot(np.array(t_mod1.shape)//2)
+        t_mod1_aff[:3,3] += offset
 
     #Load pre-align matrix
     print('Pre-align:', prealign_name)
@@ -83,10 +81,15 @@ def create_semi_synthetic(params):
         prealign = np.eye(4)
     else:
         if real_mod1[:-3] == 'img': # Analyze
-            prealign = readAntsAffine(prealign_name, 'LAS')
+            ref_coordinate_system = 'LAS'
         else: # DICOM
-            prealign = readAntsAffine(prealign_name, 'LPS')
+            ref_coordinate_system = 'LPS'
 
+        if tmp_mod1[:-3] == 'img': # Analyze
+            tgt_coordinate_system = 'LAS'
+        else: # DICOM
+            tgt_coordinate_system = 'LPS'
+        prealign = readAntsAffine(prealign_name, ref_coordinate_system, tgt_coordinate_system)
     #Configure CC metric
     sigma_diff = 1.7
     radius = 4
@@ -111,17 +114,28 @@ def create_semi_synthetic(params):
     syn.verbosity = VerbosityLevels.DEBUG
     mapping = syn.optimize(real, t_mod1, real_aff, t_mod1_aff, prealign)
 
-    #Transform template (opposite modality)
-    warped = mapping.transform(t_mod2)
-    
-    #Compute transfer function
-    means, vars = get_mean_transfer(real, warped)
-    
-    #Apply transfer to real
-    real = means[real]
-    
-    #Save semi_synthetic
-    real_nib.to_filename(oname)
+    #Transform templates (opposite modality)
+    for tmp_mod2 in tmp_mod2_list:
+        t_mod2_nib = nib.load(tmp_mod2)
+        t_mod2_aff = t_mod2_nib.get_affine()
+        t_mod2 = t_mod2_nib.get_data().squeeze()
+
+        oname = 'warpedDiff_'+base_moving+'_'+base_fixed
+        if real_mod1[:-3] == 'img': # Analyze
+            oname += '.img'
+        else:
+            oname += '.nii.gz'
+
+        warped = mapping.transform(t_mod2)
+
+        #Compute transfer function
+        means, vars = get_mean_transfer(real, warped)
+
+        #Apply transfer to real
+        real = means[real]
+
+        #Save semi_synthetic
+        real_nib.to_filename(oname)
 
 
 if __name__ == '__main__':
