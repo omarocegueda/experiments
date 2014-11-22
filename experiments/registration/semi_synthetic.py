@@ -120,6 +120,19 @@ def create_semi_synthetic(params):
     
     #Transform templates (opposite modality)
     base_fixed = getBaseFileName(real_mod1)
+
+    #Save the warped template (so we can visually check the registration result)
+    warped = mapping.transform(t_mod1)
+    base_moving = getBaseFileName(tmp_mod1)
+    oname = 'warpedDiff_'+base_moving+'_'+base_fixed
+    if real_mod1[-3:] == 'img': # Analyze
+        oname += '.img'
+    else:
+        oname += '.nii.gz'
+    real[...] = warped[...]
+    real_nib.to_filename(oname)
+
+    #Compute and save the semi-synthetic images in different modalities
     for tmp_mod2 in [tmp_mod1] + tmp_mod2_list:
         print('Warping: '+tmp_mod2)
         t_mod2_nib = nib.load(tmp_mod2)
@@ -127,7 +140,7 @@ def create_semi_synthetic(params):
         t_mod2 = t_mod2_nib.get_data().squeeze()
 
         base_moving = getBaseFileName(tmp_mod2)
-        oname = 'warpedDiff_'+base_moving+'_'+base_fixed
+        oname = 'ss_'+base_moving+'_'+base_fixed
         if real_mod1[-3:] == 'img': # Analyze
             oname += '.img'
         else:
