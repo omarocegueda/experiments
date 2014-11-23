@@ -229,7 +229,7 @@ def clean_working_dirs():
         shutil.rmtree(name)
 
 
-def split_script(argv, required_files):
+def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
     argc=len(argv)
     #############################No parameters#############################
     if not argv[1]:
@@ -255,13 +255,17 @@ def split_script(argv, required_files):
             print 'Could not open file:', argv[2]
             sys.exit(0)
         if not os.path.isdir('affine'):
-            print("WARNING: this directory does not contain an 'affine' folder. \
-Precomputed affine transforms should be located in that directory, \
-otherwise all affine registrations will be run. (If you have already precomputed \
-the affine transforms, you may use 'ln -s' to create a symlink here to the folder \
-that contains the results)")
+            warning = "WARNING: this directory does not contain an 'affine' folder."
+            warning += "Precomputed affine transforms should be located in that directory,"
+            warning += "otherwise all affine registrations will be run. (If you have already precomputed"
+            warning += "the affine transforms, you may use 'ln -s' to create a symlink here to the folder"
+            warning += "that contains the results)"
+            print(warning)
         names=[line.strip().split() for line in lines]
-        split_all_pairs(names, required_files)
+        if(task_type=='multi'):
+            split_all_pairs_multi_modal(names, required_files)
+        else:
+            split_all_pairs(names, required_files)
         sys.exit(0)
     if argv[1]=='s2':#provide two file lists: moving and fixed
         if argc<4:
@@ -281,7 +285,8 @@ that contains the results)")
             sys.exit(0)
         names_moving=[line.strip().split() for line in linesMoving]
         names_fixed=[line.strip().split() for line in linesFixed]
-        split_corresponding_pairs(names_moving, names_fixed, required_files)
+        if(task_type=='mono'):
+            split_corresponding_pairs(names_moving, names_fixed, required_files)
         sys.exit(0)
     ############################Submit###################################
     if argv[1]=='u':
