@@ -263,7 +263,7 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
             print(warning)
         names=[line.strip().split() for line in lines]
         if(task_type=='multi'):
-            split_all_pairs_multi_modal(names, required_files)
+            split_all_pairs_multi_modal(names, required_files, mod1, mod2)
         else:
             split_all_pairs(names, required_files)
         sys.exit(0)

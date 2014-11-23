@@ -26,40 +26,42 @@ def average_files():
     labels, colors=getLabelingInfo()
 
     ids = ['_segTRI_ana_', '_segTRI_fill_', '_seg_']
+    prefs = ['jaccard', 't_overlap']
 
-    for i, id in enumerate(ids):
-        fnames=sorted([name for name in os.listdir(".") if fnmatch.fnmatch(name, 'jaccard_IBSR_??'+id+'*.txt')])
-        print(id, len(fnames))
-        scores = []
-        max_len = 0
-        for name in fnames:
-            with open(name, 'r') as input:
-                line_scores = np.array([float(line) for line in input.readlines()])
-                max_len = max([max_len, len(line_scores)])
-                scores.append(line_scores)
+    for pref in prefs:
+        for i, id in enumerate(ids):
+            fnames=sorted([name for name in os.listdir(".") if fnmatch.fnmatch(name, pref+'_IBSR_??'+id+'*.txt')])
+            print(id, len(fnames))
+            scores = []
+            max_len = 0
+            for name in fnames:
+                with open(name, 'r') as input:
+                    line_scores = np.array([float(line) for line in input.readlines()])
+                    max_len = max([max_len, len(line_scores)])
+                    scores.append(line_scores)
 
-        for j, line_scores in enumerate(scores):
-            n = line_scores.shape[0]
-            new_scores = np.ndarray(max_len, dtype=np.double)
-            new_scores[:n] = line_scores[...]
-            scores[j] = new_scores
+            for j, line_scores in enumerate(scores):
+                n = line_scores.shape[0]
+                new_scores = np.ndarray(max_len, dtype=np.double)
+                new_scores[:n] = line_scores[...]
+                scores[j] = new_scores
 
-        scores = np.array(scores)
-        print(scores.shape)
-        means = scores.mean(0)
-        stds = scores.std(0)
-        print(means)
-        out = open('jaccard_mean_'+str(i+1)+'.txt', 'w')
-        out.writelines([str(s)+'\n' for s in means])
+            scores = np.array(scores)
+            print(scores.shape)
+            means = scores.mean(0)
+            stds = scores.std(0)
+            print(means)
+            out = open(pref+'_mean_'+str(i+1)+'.txt', 'w')
+            out.writelines([str(s)+'\n' for s in means])
 
-        out = open('jaccard_std_'+str(i+1)+'.txt', 'w')
-        out.writelines([str(s)+'\n' for s in stds])
-
-        if(id == '_seg_'):
-            scores = scores[:,[lab for lab in labels]]
-            means = scores.mean(1)
-            out = open('jaccard_boxplot_'+str(i+1)+'.txt', 'w')
+            out = open(pref+'_std_'+str(i+1)+'.txt', 'w')
             out.writelines([str(s)+'\n' for s in stds])
+
+            if(id == '_seg_'):
+                scores = scores[:,[lab for lab in labels]]
+                means = scores.mean(1)
+                out = open(pref+'_boxplot_'+str(i+1)+'.txt', 'w')
+                out.writelines([str(s)+'\n' for s in stds])
 
 if __name__ == '__main__':
     average_files()

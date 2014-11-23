@@ -25,7 +25,7 @@ def average_files():
     import fnmatch
     prefs = ['jaccard', 't_overlap']
 
-    for i, pref in enumerate(ids):
+    for i, pref in enumerate(prefs):
         fnames=sorted([name for name in os.listdir(".") if fnmatch.fnmatch(name, pref+'_S*.txt')])
         print(pref, len(fnames))
         scores = []

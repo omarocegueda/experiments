@@ -7,6 +7,6 @@ do
     fi
     modality="pd"
     name=(`ls ${idx}/*${modality}*`)
-    new_name="/home/omar/data/IBSR_nifti_stripped/IBSR_${idx}/IBSR_${idx}_ana_strip_${modality}.nii"
+    new_name="/home/omar/data/IBSR_nifti_stripped/IBSR_${idx}/IBSR_${idx}_ana_strip_${modality}.nii.gz"
     cp ${name} ${new_name}
 done
