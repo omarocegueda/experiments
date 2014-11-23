@@ -23,14 +23,14 @@ def get_labeling_info():
     return labels, colors
 
 def average_files():
-    labels, colors=getLabelingInfo()
+    labels, colors=get_labeling_info()
 
     ids = ['_segTRI_ana_', '_segTRI_fill_', '_seg_']
     prefs = ['jaccard', 't_overlap']
 
     for pref in prefs:
         for i, id in enumerate(ids):
-            fnames=sorted([name for name in os.listdir(".") if fnmatch.fnmatch(name, pref+'_IBSR_??'+id+'*.txt')])
+            fnames=sorted([name for name in _os.listdir(".") if fnmatch.fnmatch(name, pref+'_IBSR_??'+id+'*.txt')])
             print(id, len(fnames))
             scores = []
             max_len = 0
@@ -61,7 +61,7 @@ def average_files():
                 scores = scores[:,[lab for lab in labels]]
                 means = scores.mean(1)
                 out = open(pref+'_boxplot_'+str(i+1)+'.txt', 'w')
-                out.writelines([str(s)+'\n' for s in stds])
+                out.writelines([str(s)+'\n' for s in means])
 
 if __name__ == '__main__':
     average_files()
