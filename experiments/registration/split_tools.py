@@ -4,6 +4,7 @@ import fnmatch
 import shutil
 import subprocess
 import errno
+from rcommon import decompose_path
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -57,22 +58,22 @@ def split_all_pairs(names, required_files):
     The first element of names[i] is the image to be registered, the rest
     are different image annotations (e.g. annotations according to tissue
     type, or according to anatomical region, etc.).
-    For each pair of indices (i, j), i!=j, a working directory will be 
+    For each pair of indices (i, j), i!=j, a working directory will be
     setup to register image names[i][0] against names[j][0], then theresulting
     warp will be applied to names[i][1..k] and the Jaccard index of each
     annotated region in each annotation image will be computed for each pair.
-    For example, after registering 
-    
-    reference=names[i][0] 
-    against 
+    For example, after registering
+
+    reference=names[i][0]
+    against
     target=names[j][0]
-    
-    the resulting warp is applied to names[j][1] using nearest-neighbor 
+
+    the resulting warp is applied to names[j][1] using nearest-neighbor
     interpolation and the resulting warped annotations are compared against
     names[i][1], generating a Jaccard index for each region defined in
     names[i][1] and names[j][1]. Then the same warp is applied to names[j][2]
     and compared against names[i][2], and so on.
-    
+
     """
     nlines=len(names)
     for i in range(nlines):
@@ -88,7 +89,7 @@ def split_all_pairs(names, required_files):
                 continue
             target=names[j]
             strj='0'+str(j+1) if j+1<10 else str(j+1)
-            
+
             dir_name=strj+'_'+stri
             mkdir_p(os.path.join(dir_name,'target'))
             mkdir_p(os.path.join(dir_name,'reference'))
@@ -105,9 +106,98 @@ def split_all_pairs(names, required_files):
                     f.write(target[1+k]+' '+reference[0]+' '+reference[1+k]+'\n')
 
 
+def split_all_pairs_multi_modal(names, required_files, mod1='', mod2='_t2'):
+    r""" Creates a registration directory for each pair of images in names
+    The suffix mod1 and mod2 are added to each file name before the file extension
+    (we assume that semi-synthetic images are named the same as the original anatomy
+    file plus a suffix indicating the modality.
+    Each element of names is a list of file names.
+    The first element of names[i] is the image to be registered, the rest
+    are different image annotations (e.g. annotations according to tissue
+    type, or according to anatomical region, etc.).
+    For each pair of indices (i, j), i!=j, a working directory will be
+    setup to register image names[i][0] against names[j][0], then the resulting
+    warp will be applied to names[i][1..k] and the Jaccard index of each
+    annotated region in each annotation image will be computed for each pair.
+    For example, after registering
+
+    reference=names[i][0]
+    against
+    target=names[j][0]
+
+    the resulting warp is applied to names[j][1] using nearest-neighbor
+    interpolation and the resulting warped annotations are compared against
+    names[i][1], generating a Jaccard index for each region defined in
+    names[i][1] and names[j][1]. Then the same warp is applied to names[j][2]
+    and compared against names[i][2], and so on.
+
+    """
+    nlines=len(names)
+    for i in range(nlines):
+        if not names[i]:
+            continue
+        print 'Splitting reference:',names[i][0]
+        reference=names[i]
+        stri='0'+str(i+1) if i+1<10 else str(i+1)
+        for j in range(nlines):
+            if i==j:
+                continue
+            if not names[j]:
+                continue
+            target=names[j]
+            strj='0'+str(j+1) if j+1<10 else str(j+1)
+
+            #######target mod1 vs reference mod2########
+            dir_name=strj+'_'+stri+'_mod1_to_mod2'
+            mkdir_p(os.path.join(dir_name,'target'))
+            mkdir_p(os.path.join(dir_name,'reference'))
+            mkdir_p(os.path.join(dir_name,'warp'))
+
+            dir, name, ext = decompose_path(target[0])
+            effective_target = dir+name+mod1+ext
+
+            dir, name, ext = decompose_path(reference[0])
+            effective_reference = dir+name+mod2+ext
+
+            link_image(effective_target, dir_name+'/target')
+            link_image(effective_target, dir_name+'/reference')
+            for f in required_files:
+                subprocess.call('ln '+f+' '+dir_name, shell=True)
+            for w in target[1:]:
+                link_image(w, dir_name+'/warp')
+            with open(dir_name+'/jaccard_pairs.lst','w') as f:
+                n = len(target)-1
+                for k in range(n):
+                    f.write(target[1+k]+' '+effective_reference+' '+reference[1+k]+'\n')
+
+            #######target mod2 vs reference mod1########
+
+            dir_name=strj+'_'+stri+'_mod2_to_mod1'
+            mkdir_p(os.path.join(dir_name,'target'))
+            mkdir_p(os.path.join(dir_name,'reference'))
+            mkdir_p(os.path.join(dir_name,'warp'))
+
+            dir, name, ext = decompose_path(target[0])
+            effective_target = dir+name+mod2+ext
+
+            dir, name, ext = decompose_path(reference[0])
+            effective_reference = dir+name+mod1+ext
+
+            link_image(effective_target, dir_name+'/target')
+            link_image(effective_target, dir_name+'/reference')
+            for f in required_files:
+                subprocess.call('ln '+f+' '+dir_name, shell=True)
+            for w in target[1:]:
+                link_image(w, dir_name+'/warp')
+            with open(dir_name+'/jaccard_pairs.lst','w') as f:
+                n = len(target)-1
+                for k in range(n):
+                    f.write(target[1+k]+' '+effective_reference+' '+reference[1+k]+'\n')
+
+
 def split_corresponding_pairs(names_moving, names_fixed, required_files):
     r""" Creates a registration directory for each specified pair of images
-    
+
     """
     nlines_moving=len(names_moving)
     nlines_fixed=len(names_fixed)
