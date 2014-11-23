@@ -160,7 +160,7 @@ def split_all_pairs_multi_modal(names, required_files, mod1='', mod2='_t2'):
             effective_reference = dir+name+mod2+ext
 
             link_image(effective_target, dir_name+'/target')
-            link_image(effective_target, dir_name+'/reference')
+            link_image(effective_reference, dir_name+'/reference')
             for f in required_files:
                 subprocess.call('ln '+f+' '+dir_name, shell=True)
             for w in target[1:]:
@@ -184,7 +184,7 @@ def split_all_pairs_multi_modal(names, required_files, mod1='', mod2='_t2'):
             effective_reference = dir+name+mod1+ext
 
             link_image(effective_target, dir_name+'/target')
-            link_image(effective_target, dir_name+'/reference')
+            link_image(effective_reference, dir_name+'/reference')
             for f in required_files:
                 subprocess.call('ln '+f+' '+dir_name, shell=True)
             for w in target[1:]:
