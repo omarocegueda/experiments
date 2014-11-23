@@ -12,7 +12,10 @@ def getBaseFileName(fname):
 
 
 def decompose_path(fname):
-    dirname=os.path.dirname(fname)+'/'
+    dirname=os.path.dirname(fname)
+    if len(dirname)>0:
+        dirname += '/'
+
     base=os.path.basename(fname)
     no_ext = os.path.splitext(base)[0]
     while(no_ext !=base):
