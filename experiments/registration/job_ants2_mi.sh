@@ -1,11 +1,11 @@
 #!/bin/bash
 ####################################################
 #Author: Omar Ocegueda (omar@cimat.mx)
-#PBS -l mem=3GB
-#PBS -l pmem=3GB
-#PBS -l vmem=3GB
+#PBS -l mem=8GB
+#PBS -l pmem=8GB
+#PBS -l vmem=8GB
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=02:00:00
+#PBS -l walltime=06:00:00
 #PBS -N ANTS2-MI
 
 # Configure your environment
