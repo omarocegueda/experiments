@@ -70,7 +70,7 @@ else
     exe="antsRegistration -d 3 -r $affine \
                       -m mattes[reference/$reference, target/$target, 1 , 32 ] \
                       -t syn[ .25, 3, 0 ] \
-                      -c [ 1x1x0,1e-5,12 ] \
+                      -c [ 100x100x25,1e-5,12 ] \
                       -s 1x0.5x0vox \
                       -f 4x2x1\
                       -o [${op}, warpedDiff_${op}.nii.gz, warpedDiff_${op}.nii.gz]"
