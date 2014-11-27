@@ -148,7 +148,10 @@ def split_all_pairs_multi_modal(names, required_files, mod1='', mod2='_t2'):
             strj='0'+str(j+1) if j+1<10 else str(j+1)
 
             #######target mod1 vs reference mod2########
-            dir_name=strj+'_'+stri+'_mod1_to_mod2'
+            if mod1 != mod2:
+                dir_name=strj+'_'+stri+'_mod1_to_mod2'
+            else:
+                dir_name=strj+'_'+stri
             mkdir_p(os.path.join(dir_name,'target'))
             mkdir_p(os.path.join(dir_name,'reference'))
             mkdir_p(os.path.join(dir_name,'warp'))
@@ -171,7 +174,8 @@ def split_all_pairs_multi_modal(names, required_files, mod1='', mod2='_t2'):
                     f.write(target[1+k]+' '+effective_reference+' '+reference[1+k]+'\n')
 
             #######target mod2 vs reference mod1########
-
+            if mod1 == mod2:
+                continue
             dir_name=strj+'_'+stri+'_mod2_to_mod1'
             mkdir_p(os.path.join(dir_name,'target'))
             mkdir_p(os.path.join(dir_name,'reference'))
