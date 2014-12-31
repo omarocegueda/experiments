@@ -1,12 +1,12 @@
 #!/bin/bash
 ####################################################
 #Author: Omar Ocegueda (omar@cimat.mx)
-#PBS -l mem=2GB
-#PBS -l pmem=2GB
-#PBS -l vmem=2GB
+#PBS -l mem=1GB
+#PBS -l pmem=1GB
+#PBS -l vmem=1GB
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=02:00:00
-#PBS -N SyNCC
+#PBS -N Aff-MI
 
 # Configure your environment
 export DIPY_DIR="$HOME/opt/dipy"
