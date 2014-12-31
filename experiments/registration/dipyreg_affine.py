@@ -73,7 +73,7 @@ parser.add_argument(
     help = '''parameter of the scale-space smoothing kernel. For example, the
            std. dev. of the kernel will be factor*(2^i) in the isotropic case
            where i=0,1,..,n_scales is the scale''',
-    default = '0.2')
+    default = '1.0')
 
 parser.add_argument(
     '-mask0', '--mask0', action = 'store_true',
