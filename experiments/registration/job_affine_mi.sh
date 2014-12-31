@@ -28,5 +28,5 @@ targetbase="${targetbase%.*}"
 referencebase="${reference%.*}"
 referencebase="${referencebase%.*}"
 #Affine registration with dipy
-python dipyreg_affine.py target/$target reference/$reference warp --transforms=TRANSLATION,RIGID,AFFINE --metric=MI[32] --iter=10000,10000,10000 
+python dipyreg_affine.py target/$target reference/$reference warp --transforms=TRANSLATION,RIGID,AFFINE --metric=MI[32] --iter=10000,10000,10000 --ss_sigma_factor=1.0
 date
