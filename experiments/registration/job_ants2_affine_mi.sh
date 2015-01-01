@@ -63,8 +63,6 @@ for towarp in $( ls warp ); do
     oname=warpedAff_${towarpbase}_${referencebase}.nii.gz
     antsApplyTransforms -d 3 -i warp/$towarp -o $oname -r reference/$reference -n NearestNeighbor --float -t $affine
 done
-rm $deformationField
-rm $inverseField
 python -c 'from experiments.registration.dipyreg_affine import *; compute_scores()'
 
 
