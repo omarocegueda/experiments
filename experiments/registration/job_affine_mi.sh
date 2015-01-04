@@ -1,9 +1,9 @@
 #!/bin/bash
 ####################################################
 #Author: Omar Ocegueda (omar@cimat.mx)
-#PBS -l mem=1GB
-#PBS -l pmem=1GB
-#PBS -l vmem=1GB
+#PBS -l mem=4GB
+#PBS -l pmem=4GB
+#PBS -l vmem=4GB
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=02:00:00
 #PBS -N Aff-MI
