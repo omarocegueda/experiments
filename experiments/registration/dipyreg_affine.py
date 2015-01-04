@@ -68,6 +68,24 @@ parser.add_argument(
     default = '25,100,100')
 
 parser.add_argument(
+    '-method', '--method', action = 'store',
+    metavar = 'method',
+    help = '''Optimization method''',
+    default = 'CGGS')
+
+parser.add_argument(
+    '-f', '--factors', action = 'store',
+    metavar = 'factors',
+    help = '''Shrink factors for the scale space''',
+    default = '4,2,1')
+
+parser.add_argument(
+    '-s', '--sigmas', action = 'store',
+    metavar = 'sigmas',
+    help = '''Smoothin kernel's standard deviations for scale space''',
+    default = '3,1,0')
+
+parser.add_argument(
     '-sssf', '--ss_sigma_factor', action = 'store',
     metavar = 'ss_sigma_factor',
     help = '''parameter of the scale-space smoothing kernel. For example, the
@@ -95,6 +113,9 @@ def print_arguments(params):
     print('transforms: ', params.transforms)
     print('iter:', params.iter)
     print('ss_sigma_factor', params.ss_sigma_factor)
+    print('factors:', params.factors)
+    print('sigmas:', params.sigmas)
+    print('method:', params.method)
     print('mask0',params.mask0)
 
 
@@ -242,7 +263,12 @@ def register_3d(params):
     opt_iter = [int(i) for i in params.iter.split(',')]
     transforms = [t for t in params.transforms.split(',')]
     ss_sigma_factor = float(params.ss_sigma_factor)
-    affreg = AffineRegistration(metric, opt_iter, opt_tol, ss_sigma_factor, None)
+    factors = [int(i) for i in params.factors.split(',')]
+    sigmas = [float(i) for i in params.sigmas.split(',')]
+    #method = 'CGGS'
+    method = params.method
+    affreg = AffineRegistration(metric, method, opt_iter, opt_tol, ss_sigma_factor,
+                                factors, sigmas, None)
 
     #Load the data
     moving_nib = nib.load(params.moving)
@@ -264,6 +290,7 @@ def register_3d(params):
     #Run the registration
     sol = np.eye(dim + 1)
     prealign = 'mass'
+
     for transform in transforms:
         print('Optimizing: %s'%(transform,))
         x0 = None
