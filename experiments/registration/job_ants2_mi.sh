@@ -80,6 +80,10 @@ fi
 
 date
 
+oname=warpedDiff_${targetbase}_${referencebase}.nii.gz
+deformationField=${targetbase}_${referencebase}1Warp.nii.gz
+antsApplyTransforms -d 3 -i target/$target -o $oname -r reference/$reference -n Linear --float -t $deformationField -t $affine
+
 for towarp in $( ls warp ); do
     towarpbase="${towarp%.*}"
     towarpbase="${towarpbase%.*}"

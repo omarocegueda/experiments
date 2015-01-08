@@ -303,7 +303,7 @@ def save_registration_results(mapping, params):
     base_fixed = getBaseFileName(params.reference)
     moving = nib.load(params.target).get_data().squeeze().astype(np.float64)
     moving = moving.copy(order='C')
-    warped = np.array(mapping.transform(moving, 'linear')).astype(np.int16)
+    warped = np.array(mapping.transform(moving, 'linear'))
     img_warped = nib.Nifti1Image(warped, fixed_affine)
     img_warped.to_filename('warpedDiff_'+base_moving+'_'+base_fixed+'.nii.gz')
     #---warp all volumes in the warp directory using NN interpolation
