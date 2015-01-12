@@ -7,13 +7,11 @@ import sys
 import os
 import numpy as np
 import nibabel as nib
-from dipy.align.imaffine import MattesMIMetric, AffineRegistration, aff_warp
-import dipy.align.imwarp as imwarp
-import dipy.align.metrics as metrics
 from dipy.fixes import argparse as arg
-from dipy.align import VerbosityLevels
-from experiments.registration.rcommon import getBaseFileName, decompose_path, readAntsAffine
+from experiments.registration.rcommon import getBaseFileName, decompose_path
 import experiments.registration.evaluation as evaluation
+from nipy.algorithms.registration import HistogramRegistration, resample
+from nipy.io.files import nipy2nifti, nifti2nipy
 
 parser = arg.ArgumentParser(
     description="Affine image registration."
@@ -50,7 +48,7 @@ parser.add_argument(
     MI[nbins]
         nbins: number of histogram bins
     ''',
-    default = 'MI[32]')
+    default = 'crl1')
 
 parser.add_argument(
     '-t', '--transforms', action = 'store', metavar = 'transforms',
@@ -58,7 +56,7 @@ parser.add_argument(
     each being any of {TRANSLATION, ROTATION, RIGID, SCALING, AFFINE} specifying
     the desired sequence of transformation types
     ''',
-    default = 'RIGID,AFFINE')
+    default = 'affine')
 
 parser.add_argument(
     '-i', '--iter', action = 'store', metavar = 'i_0,i_1,...,i_n',
@@ -71,27 +69,7 @@ parser.add_argument(
     '-method', '--method', action = 'store',
     metavar = 'method',
     help = '''Optimization method''',
-    default = 'CGGS')
-
-parser.add_argument(
-    '-f', '--factors', action = 'store',
-    metavar = 'factors',
-    help = '''Shrink factors for the scale space''',
-    default = '4,2,1')
-
-parser.add_argument(
-    '-s', '--sigmas', action = 'store',
-    metavar = 'sigmas',
-    help = '''Smoothin kernel's standard deviations for scale space''',
-    default = '3,1,0')
-
-parser.add_argument(
-    '-sssf', '--ss_sigma_factor', action = 'store',
-    metavar = 'ss_sigma_factor',
-    help = '''parameter of the scale-space smoothing kernel. For example, the
-           std. dev. of the kernel will be factor*(2^i) in the isotropic case
-           where i=0,1,..,n_scales is the scale''',
-    default = '1.0')
+    default = 'powell')
 
 parser.add_argument(
     '-mask0', '--mask0', action = 'store_true',
@@ -112,9 +90,6 @@ def print_arguments(params):
     print('metric: ', params.metric)
     print('transforms: ', params.transforms)
     print('iter:', params.iter)
-    print('ss_sigma_factor', params.ss_sigma_factor)
-    print('factors:', params.factors)
-    print('sigmas:', params.sigmas)
     print('method:', params.method)
     print('mask0',params.mask0)
 
@@ -188,13 +163,13 @@ def save_registration_results(sol, params):
 
     base_static = getBaseFileName(params.static)
     static_nib = nib.load(params.static)
-    static = static_nib.get_data().squeeze().astype(np.float64)
+    static = nifti2nipy(static_nib)
     static_affine = static_nib.get_affine()
     static_shape = np.array(static.shape, dtype=np.int32)
 
     base_moving = getBaseFileName(params.moving)
     moving_nib = nib.load(params.moving)
-    moving = moving_nib.get_data().squeeze().astype(np.float64)
+    moving = nifti2nipy(moving_nib)
     moving_affine = moving_nib.get_affine()
     moving_shape = np.array(moving.shape, dtype=np.int32)
 
@@ -202,12 +177,9 @@ def save_registration_results(sol, params):
     static_affine = static_affine[:(dim + 1), :(dim + 1)]
     moving_affine = moving_affine[:(dim + 1), :(dim + 1)]
 
-    warped= resample(moving, sol.inv(), reference=static, interp_order=1)
-
-    img_affine = np.eye(4,4)
-    img_affine[:(dim + 1), :(dim + 1)] = static_affine[...]
-    img_warped = nib.Nifti1Image(warped, img_affine)
-    img_warped.to_filename('warpedAff_'+base_moving+'_'+base_static+'.nii.gz')
+    warped = resample(moving, sol.inv(), reference=static, interp_order=1)
+    fmoved = 'warpedAff_'+base_moving+'_'+base_static+'.nii.gz'
+    nib.save(nipy2nifti(warped, strict=True), fmoved)
     #---warp all volumes in the warp directory using NN interpolation
     names = [os.path.join(warp_dir, name) for name in os.listdir(warp_dir)]
     for name in names:
@@ -215,13 +187,11 @@ def save_registration_results(sol, params):
         to_warp_affine = to_warp_nib.get_affine()
         img_affine = to_warp_affine[:(dim + 1), :(dim + 1)]
 
-        to_warp = to_warp_nib.get_data().squeeze().astype(np.int32)
+        to_warp = nifti2nipy(to_warp_nib)
         base_warp = getBaseFileName(name)
-        warped= resample(moving, sol.inv(), reference=static, interp_order=0)
-        img_affine = np.eye(4,4)
-        img_affine[:(dim + 1), :(dim + 1)] = static_affine[...]
-        img_warped = nib.Nifti1Image(warped, img_affine)
-        img_warped.to_filename('warpedAff_'+base_warp+'_'+base_static+'.nii.gz')
+        warped = resample(moving, sol.inv(), reference=static, interp_order=0)
+        fmoved = 'warpedAff_'+base_warp+'_'+base_static+'.nii.gz'
+        nib.save(nipy2nifti(warped, strict=True), fmoved)
     #---now the jaccard indices
     if os.path.exists('jaccard_pairs.lst'):
         with open('jaccard_pairs.lst','r') as f:
@@ -247,7 +217,7 @@ def register_3d(params):
     # Default parameters
     renormalize = False
     interp = 'tri'
-    optimizer = 'powell'
+    optimizer = params.method
     
     print('Registering %s to %s'%(params.moving, params.static))
     sys.stdout.flush()
@@ -259,19 +229,13 @@ def register_3d(params):
     #Load the data
     moving_nib = nib.load(params.moving)
     moving_affine = moving_nib.get_affine()
-    moving = moving_nib.get_data().squeeze().astype(np.float64)
 
     static_nib = nib.load(params.static)
     static_affine = static_nib.get_affine()
-    static = static_nib.get_data().squeeze().astype(np.float64)
 
-    dim = len(static.shape)
-    static_affine = static_affine[:(dim + 1), :(dim + 1)]
-    moving_affine = moving_affine[:(dim + 1), :(dim + 1)]
-    
     #Preprocess the data
-    moving = (moving-moving.min())/(moving.max()-moving.min())
-    static = (static-static.min())/(static.max()-static.min())
+    moving= nifti2nipy(moving_nib)
+    static= nifti2nipy(static_nib)
 
     # Register
     tic = time.time()
