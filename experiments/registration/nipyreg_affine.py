@@ -163,12 +163,14 @@ def save_registration_results(sol, params):
 
     base_static = getBaseFileName(params.static)
     static_nib = nib.load(params.static)
+    static_nib = nib.Nifti1Image(static_nib.get_data().squeeze(), static_nib.get_affine())
     static = nifti2nipy(static_nib)
     static_affine = static_nib.get_affine()
     static_shape = np.array(static.shape, dtype=np.int32)
 
     base_moving = getBaseFileName(params.moving)
     moving_nib = nib.load(params.moving)
+    moving_nib = nib.Nifti1Image(moving_nib.get_data().squeeze(), moving_nib.get_affine())
     moving = nifti2nipy(moving_nib)
     moving_affine = moving_nib.get_affine()
     moving_shape = np.array(moving.shape, dtype=np.int32)
@@ -184,12 +186,13 @@ def save_registration_results(sol, params):
     names = [os.path.join(warp_dir, name) for name in os.listdir(warp_dir)]
     for name in names:
         to_warp_nib = nib.load(name)
+        to_warp_nib = nib.Nifti1Image(to_warp_nib.get_data().squeeze(), to_warp_nib.get_affine())
         to_warp_affine = to_warp_nib.get_affine()
         img_affine = to_warp_affine[:(dim + 1), :(dim + 1)]
 
         to_warp = nifti2nipy(to_warp_nib)
         base_warp = getBaseFileName(name)
-        warped = resample(moving, sol.inv(), reference=static, interp_order=0)
+        warped = resample(to_warp, sol.inv(), reference=static, interp_order=0)
         fmoved = 'warpedAff_'+base_warp+'_'+base_static+'.nii.gz'
         nib.save(nipy2nifti(warped, strict=True), fmoved)
     #---now the jaccard indices
@@ -221,19 +224,15 @@ def register_3d(params):
     
     print('Registering %s to %s'%(params.moving, params.static))
     sys.stdout.flush()
-    metric_name=params.metric[0:params.metric.find('[')]
-    metric_params_list=params.metric[params.metric.find('[')+1:params.metric.find(']')].split(',')
     moving_mask = None
     static_mask = None
 
     #Load the data
     moving_nib = nib.load(params.moving)
-    moving_affine = moving_nib.get_affine()
-
+    moving_nib = nib.Nifti1Image(moving_nib.get_data().squeeze(), moving_nib.get_affine())
     static_nib = nib.load(params.static)
-    static_affine = static_nib.get_affine()
+    static_nib = nib.Nifti1Image(static_nib.get_data().squeeze(), static_nib.get_affine())
 
-    #Preprocess the data
     moving= nifti2nipy(moving_nib)
     static= nifti2nipy(static_nib)
 
