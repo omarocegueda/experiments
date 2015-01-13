@@ -1,9 +1,9 @@
 #!/bin/bash
 ####################################################
 #Author: Omar Ocegueda (omar@cimat.mx)
-#PBS -l mem=4GB
-#PBS -l pmem=4GB
-#PBS -l vmem=4GB
+#PBS -l mem=1GB
+#PBS -l pmem=1GB
+#PBS -l vmem=1GB
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=02:00:00
 #PBS -N Nipy-MI
@@ -28,5 +28,6 @@ targetbase="${targetbase%.*}"
 referencebase="${reference%.*}"
 referencebase="${referencebase%.*}"
 #Affine registration with dipy
-python nipyreg_affine.py target/$target reference/$reference warp --metric=nmi
+python nipyreg_affine.py target/$target reference/$reference warp --metric=mi[32]
 date
+

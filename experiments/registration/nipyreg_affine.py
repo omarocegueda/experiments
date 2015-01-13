@@ -220,6 +220,11 @@ def register_3d(params):
     # Default parameters
     renormalize = False
     interp = 'tri'
+
+    metric_name=params.metric[0:params.metric.find('[')]
+    metric_params_list=params.metric[params.metric.find('[')+1:params.metric.find(']')].split(',')
+    nbins=int(metric_params_list[0])
+
     optimizer = params.method
     
     print('Registering %s to %s'%(params.moving, params.static))
@@ -238,8 +243,9 @@ def register_3d(params):
 
     # Register
     tic = time.time()
-    R = HistogramRegistration(moving, static, similarity=params.metric,
-                              interp=interp, renormalize=renormalize)
+    R = HistogramRegistration(moving, static, from_bins=nbins, to_bins=nbins, 
+                              similarity=metric_name, interp=interp, 
+                              renormalize=renormalize)
 
     T = R.optimize('affine', optimizer=optimizer)
     toc = time.time()    
