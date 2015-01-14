@@ -30,6 +30,60 @@ parser.add_argument(
     'warp_dir', action = 'store', metavar = 'warp_dir',
     help = '''Directory (relative to ./ ) containing the template images in other modalities of interest''')
 
+def draw_boxplots(means, vars, nrows=1, ncols=1, selected=1, fig=None):
+    n = len(means)
+    bpd = np.zeros(shape = (3, n), dtype = np.float64)
+
+    for i, mu in enumerate(means):
+        delta = np.sqrt(vars[i]/2)
+        bpd[0][i] = mu - delta
+        bpd[1][i] = mu
+        bpd[2][i] = mu + delta
+
+    if fig is None:
+        fig = plt.figure(1)
+    ax = fig.add_subplot(nrows, ncols, selected)
+    bp = ax.boxplot(bpd)
+
+    m = np.min(means)
+    M = np.max(means)
+    print("Range: [%0.2f, %0.2f]" % (m, M))
+    xpos = range(0, n, 10)
+    ypos = range(int(m), int(M), 10)
+    xlabels = [str(i) for i in range(0, n, 10)]
+    ylabels = [str(i) for i in range(int(m), int(M), 10)]
+    plt.xticks(xpos, xlabels, fontsize=20)
+    plt.yticks(ypos, ylabels, fontsize=20)
+    plt.plot(np.array(range(n))+1, means)
+    plt.grid()
+
+
+def draw_boxplot_series(means, vars):
+    colors = ["#96b4e6", "#faaa82", "#bebebe", "#fad278"]
+    nseries = means.shape[0]
+    n = means.shape[1]
+    bpd = np.zeros(shape = (3, n*nseries), dtype = np.float64)
+    fig = plt.figure(1)
+    ax = fig.add_subplot(1, 1, 1)
+    m = np.min(means)
+    M = np.max(means)
+    print("Range: [%0.2f, %0.2f]" % (m, M))
+    ax.set_xticks(np.arange(m, M, 5))
+    ax.set_yticks(np.arange(m, M, 5))
+
+    for s in range(nseries):
+        for i, mu in enumerate(means[s]):
+            delta = np.sqrt(vars[s,i]/2)
+            bpd[0][s*n + i] = mu - delta
+            bpd[1][s*n + i] = mu
+            bpd[2][s*n + i] = mu + delta
+
+    bp = ax.boxplot(bpd, patch_artist=True)
+    for patch, color in zip(bp['boxes'], colors*nseries):
+        patch.set_facecolor(color)
+
+
+
 def print_arguments(params):
     r'''
     Verify all arguments were correctly parsed and interpreted
@@ -106,18 +160,18 @@ def create_semi_synthetic(params):
     inv_iter = 20
     inv_tol = 1e-3
     ss_sigma_factor = 0.2
-    syn = imwarp.SymmetricDiffeomorphicRegistration(similarity_metric, 
-                                                    opt_iter, 
-                                                    step_length, 
-                                                    ss_sigma_factor, 
-                                                    opt_tol, 
-                                                    inv_iter, 
-                                                    inv_tol, 
+    syn = imwarp.SymmetricDiffeomorphicRegistration(similarity_metric,
+                                                    opt_iter,
+                                                    step_length,
+                                                    ss_sigma_factor,
+                                                    opt_tol,
+                                                    inv_iter,
+                                                    inv_tol,
                                                     callback = None)
     #Run registration
     syn.verbosity = VerbosityLevels.DEBUG
     mapping = syn.optimize(real, t_mod1, real_aff, t_mod1_aff, prealign)
-    
+
     #Transform templates (opposite modality)
     base_fixed = getBaseFileName(real_mod1)
 
@@ -147,7 +201,7 @@ def create_semi_synthetic(params):
             oname += '.nii.gz'
 
         warped = mapping.transform(t_mod2)
-        
+
         real_nib = nib.load(real_mod1)
         real = real_nib.get_data().squeeze()
 
@@ -155,7 +209,7 @@ def create_semi_synthetic(params):
         means, vars = get_mean_transfer(real, warped)
 
         #Apply transfer to real
-        
+
         real[...] = means[real]
 
         #Save semi_synthetic

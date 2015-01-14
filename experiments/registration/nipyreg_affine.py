@@ -179,7 +179,7 @@ def save_registration_results(sol, params):
     static_affine = static_affine[:(dim + 1), :(dim + 1)]
     moving_affine = moving_affine[:(dim + 1), :(dim + 1)]
 
-    warped = resample(moving, sol.inv(), reference=static, interp_order=1)
+    warped = resample(moving, sol, reference=static, interp_order=1)
     fmoved = 'warpedAff_'+base_moving+'_'+base_static+'.nii.gz'
     nib.save(nipy2nifti(warped, strict=True), fmoved)
     #---warp all volumes in the warp directory using NN interpolation
@@ -192,7 +192,7 @@ def save_registration_results(sol, params):
 
         to_warp = nifti2nipy(to_warp_nib)
         base_warp = getBaseFileName(name)
-        warped = resample(to_warp, sol.inv(), reference=static, interp_order=0)
+        warped = resample(to_warp, sol, reference=static, interp_order=0)
         fmoved = 'warpedAff_'+base_warp+'_'+base_static+'.nii.gz'
         nib.save(nipy2nifti(warped, strict=True), fmoved)
     #---now the jaccard indices
@@ -226,7 +226,7 @@ def register_3d(params):
     nbins=int(metric_params_list[0])
 
     optimizer = params.method
-    
+
     print('Registering %s to %s'%(params.moving, params.static))
     sys.stdout.flush()
     moving_mask = None
@@ -243,12 +243,12 @@ def register_3d(params):
 
     # Register
     tic = time.time()
-    R = HistogramRegistration(moving, static, from_bins=nbins, to_bins=nbins, 
-                              similarity=metric_name, interp=interp, 
+    R = HistogramRegistration(static, moving, from_bins=nbins, to_bins=nbins,
+                              similarity=metric_name, interp=interp,
                               renormalize=renormalize)
 
     T = R.optimize('affine', optimizer=optimizer)
-    toc = time.time()    
+    toc = time.time()
 
     save_registration_results(T, params)
 
