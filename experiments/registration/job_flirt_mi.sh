@@ -37,6 +37,7 @@ metric="mutualinfo"
 nbins="32"
 dof="12"
 oname=warpedAff_${targetbase}_${referencebase}.nii.gz
+STARTTIME=$(date +%s)
 if ! [ -r $affine ]; then
     exe="flirt -in target/$target -ref reference/$reference -out $oname -omat $matname -bins $nbins -cost $metric -dof $dof"
     echo " $exe "
@@ -44,7 +45,7 @@ if ! [ -r $affine ]; then
 else
     echo "Affine mapping found ($affine). Skipping affine registration."
 fi
-
+ENDTIME=$(date +%s)
 for towarp in $( ls warp ); do
     towarpbase="${towarp%.*}"
     towarpbase="${towarpbase%.*}"
@@ -52,3 +53,4 @@ for towarp in $( ls warp ); do
     flirt -in warp/$towarp -ref reference/$reference -out $oname -applyxfm -init $matname -interp nearestneighbour
 done
 python -c 'from experiments.registration.dipyreg_affine import *; compute_scores()'
+echo "Time elapsed (sec.): $(($ENDTIME - $STARTTIME))"
