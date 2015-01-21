@@ -34,6 +34,7 @@ affine0="${targetbase}_${referencebase}0GenericAffine.mat"
 op="${targetbase}_${referencebase}"
 matname="${targetbase}_${referencebase}Affine.txt"
 metric="corratio"
+#nbins="256"
 nbins="32"
 dof="12"
 oname=warpedAff_${targetbase}_${referencebase}.nii.gz

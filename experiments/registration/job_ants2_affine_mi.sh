@@ -31,24 +31,26 @@ referencebase="${referencebase%.*}"
 affine="${targetbase}_${referencebase}Affine.txt"
 affine0="${targetbase}_${referencebase}0GenericAffine.mat"
 
+sampling="regular, 0.3"
+#sampling="None"
 op="${targetbase}_${referencebase}"
 if ! [ -r $affine ]; then
     exe="antsRegistration -d 3 -r [ reference/$reference, target/$target, 1 ] \
-                      -m mattes[ reference/$reference, target/$target, 1 , 32, None] \
+                      -m mattes[ reference/$reference, target/$target, 1 , 32, $sampling] \
                       -t translation[ 0.1 ] \
-                      -c [ 10000x111110x11110,1.e-7,20 ] \
-                      -s 3x1x0vox \
-                      -f 4x2x1 -l 1 \
-                      -m mattes[ reference/$reference, target/$target, 1 , 32, None] \
+                      -c [ 10000x111110x11110,1.e-8,20 ] \
+                      -s 4x2x1vox \
+                      -f 6x4x2 -l 1 \
+                      -m mattes[ reference/$reference, target/$target, 1 , 32, $sampling] \
                       -t rigid[ 0.1 ] \
-                      -c [ 10000x111110x11110,1.e-7,20 ] \
-                      -s 3x1x0vox \
-                      -f 4x2x1 -l 1 \
-                      -m mattes[ reference/$reference, target/$target, 1 , 32, None] \
+                      -c [ 10000x111110x11110,1.e-8,20 ] \
+                      -s 4x2x1vox \
+                      -f 3x2x1 -l 1 \
+                      -m mattes[ reference/$reference, target/$target, 1 , 32, $sampling] \
                       -t affine[ 0.1 ] \
-                      -c [ 10000x111110x11110,1.e-7,20 ] \
-                      -s 3x1x0vox \
-                      -f 4x2x1 -l 1 \
+                      -c [ 10000x111110x11110,1.e-8,20 ] \
+                      -s 4x2x1vox \
+                      -f 3x2x1 -l 1 \
                       -o [${op}]"
     echo " $exe "
     $exe
@@ -56,6 +58,9 @@ if ! [ -r $affine ]; then
 else
     echo "Affine mapping found ($affine). Skipping affine registration."
 fi
+
+oname=warpedDiff_${targetbase}_${referencebase}.nii.gz
+antsApplyTransforms -d 3 -i target/$target -o $oname -r reference/$reference -n Linear --float -t $affine
 
 for towarp in $( ls warp ); do
     towarpbase="${towarp%.*}"

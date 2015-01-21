@@ -246,7 +246,7 @@ def register_3d(params):
     R = HistogramRegistration(static, moving, from_bins=nbins, to_bins=nbins,
                               similarity=metric_name, interp=interp,
                               renormalize=renormalize)
-
+    R.set_fov(spacing=(1,1,1))
     T = R.optimize('affine', optimizer=optimizer)
     toc = time.time()
 
