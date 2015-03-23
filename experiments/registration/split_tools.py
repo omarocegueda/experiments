@@ -106,11 +106,59 @@ def split_all_pairs(names, required_files):
                     f.write(target[1+k]+' '+reference[0]+' '+reference[1+k]+'\n')
 
 
+def split_indirect_validation(labeled, unlabeled, required_files):
+    r"""
+    Register all pairs (a, b) from 'labeled' to each c in 'unlabeled'. The
+    score will be computed by composing the transformations a-->c and c-->b
+    and measuring the Jaccard index of regions in 'a' with those of 'b' after
+    deformation.
+    """
+    nlabeled = len(labeled)
+    nunlabeled = len(unlabeled)
+
+    for i in range(nlabeled):
+        stri='0'+str(i+1) if i+1<10 else str(i+1)
+        for j in range(nlabeled):
+            if i == j:
+                continue
+            # For each pair in labeled
+            strj='0'+str(j+1) if j+1<10 else str(j+1)
+
+
+            for k in range(nunlabeled):
+                # For each unlabeled
+                strk='0'+str(k+1) if j+1<10 else str(k+1)
+
+                dir_name=strj+'_'+stri+'_'+strk
+
+                mkdir_p(os.path.join(dir_name,'ref_fixed'))
+                mkdir_p(os.path.join(dir_name,'ref_moving'))
+                mkdir_p(os.path.join(dir_name,'target'))
+                mkdir_p(os.path.join(dir_name,'warp'))
+
+                link_image(labeled[i][0], dir_name+'/ref_fixed')
+                link_image(labeled[j][0], dir_name+'/ref_moving')
+                link_image(unlabeled[k], dir_name+'/target')
+
+                for f in required_files:
+                    subprocess.call('ln '+f+' '+dir_name, shell=True)
+
+                for w in labeled[j][1:]:
+                    link_image(w, dir_name+'/warp')
+
+                with open(dir_name+'/jaccard_pairs.lst','w') as f:
+                    n = len(labeled[j]) - 1
+                    for h in range(n):
+                        f.write(labeled[j][1 + h]+' '+labeled[i][0]+' '+labeled[i][1 + h]+'\n')
+
+
+
+
 def split_all_pairs_multi_modal(names, required_files, mod1='', mod2='_t2'):
     r""" Creates a registration directory for each pair of images in names
     The suffix mod1 and mod2 are added to each file name before the file extension
     (we assume that semi-synthetic images are named the same as the original anatomy
-    file plus a suffix indicating the modality.
+    file plus a suffix indicating the modality).
     Each element of names is a list of file names.
     The first element of names[i] is the image to be registered, the rest
     are different image annotations (e.g. annotations according to tissue
@@ -268,8 +316,15 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
         names=[line.strip().split() for line in lines]
         if(task_type=='multi'):
             split_all_pairs_multi_modal(names, required_files, mod1, mod2)
-        else:
+        elif(task_type=='mono'):
             split_all_pairs(names, required_files)
+        elif(task_type=='indirect'):
+            unlabeled = []
+            with open(argv[3]) as f:
+                unlabeled=[line.strip() for line in f.readlines()]
+            split_indirect_validation(names, unlabeled, required_files)
+        else:
+            print("Unknown task type: "+task_type)
         sys.exit(0)
     if argv[1]=='s2':#provide two file lists: moving and fixed
         if argc<4:

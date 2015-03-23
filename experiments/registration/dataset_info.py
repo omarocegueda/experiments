@@ -3,6 +3,7 @@ import experiments.registration.rcommon as rcommon
 _ibsr_base_dir = 'Unspecified'
 _lpba_base_dir = 'Unspecified'
 _brainweb_base_dir = 'Unspecified'
+_scil_base_dir = 'Unspecified'
 
 def _load_dataset_info():
     dirname, base, ext = rcommon.decompose_path(__file__)
@@ -10,15 +11,17 @@ def _load_dataset_info():
     if _os.path.isfile(fname):
         with open(fname) as f:
             lines = [s.strip() for s in f.readlines()]
-            if len(lines) != 3:
+            if len(lines) != 4:
                 print('Warning: expected base directories for IBSR, LPBA and Brainweb in '+fname+' in that order. Found '+str(len(lines))+' lines in file, you may get unexpected results')
             else:
                 global _ibsr_base_dir
                 global _lpba_base_dir
                 global _brainweb_base_dir
+                global _scil_base_dir
                 _ibsr_base_dir = lines[0]
                 _lpba_base_dir = lines[1]
                 _brainweb_base_dir = lines[2]
+                _scil_base_dir = lines[3]
     else:
         print('Error: file not found. Expected base directories for IBSR, LPBA and Brainweb in text file "'+fname+'" in that order.')
 
@@ -38,6 +41,11 @@ def get_lpba_base_dir():
 def get_brainweb_base_dir():
     global _brainweb_base_dir
     return _brainweb_base_dir
+
+
+def get_scil_base_dir():
+    global _scil_base_dir
+    return _scil_base_dir
 
 
 def get_ibsr(idx, data):
@@ -95,3 +103,11 @@ def get_brainweb(modality, data):
     return fname
 
 
+def get_scil(idx, data):
+    scil_base_dir = get_scil_base_dir()
+    if idx<10:
+        idx = '0'+str(idx)
+    else:
+        idx = str(idx)
+    prefix = scil_base_dir + 'IBSR_'+idx+'/IBSR_'+idx
+    fname = prefix + data
