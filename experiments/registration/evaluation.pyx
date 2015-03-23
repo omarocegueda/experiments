@@ -59,9 +59,9 @@ def compute_jaccard(int[:,:,:] A, int[:,:,:] B):
 
 def compute_target_overlap(int[:,:,:] T, int[:,:,:] S):
     r""" Computes the target overlap index of each region of T and S
-    
+
     The target overlap between two sets T, S, where T is not empty, is:
-    
+
     |Intersection(T, S)|/|T|
 
     parameters

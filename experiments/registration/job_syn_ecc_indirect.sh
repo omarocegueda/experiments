@@ -25,9 +25,9 @@ ref_moving=$(ls {ref_moving/*.nii.gz,ref_moving/*.img} 2>/dev/null | xargs -n1 b
 target=$(ls {target/*.nii.gz,target/*.img} 2>/dev/null | xargs -n1 basename)
 
 ref_fixed_base="${ref_fixed%.*}"
-ref_fixed_base="${ref_fixed%.*}"
+ref_fixed_base="${ref_fixed_base%.*}"
 ref_moving_base="${ref_moving%.*}"
-ref_moving_base="${ref_moving%.*}"
+ref_moving_base="${ref_moving_base%.*}"
 targetbase="${target%.*}"
 targetbase="${targetbase%.*}"
 
@@ -55,5 +55,6 @@ else
 fi
 
 #Diffeomorphic registration
-#python dipyreg.py target/$target reference/$reference $affine warp --metric=ECC[1.7,4,255] --iter=100,100,25 --step_length=0.25
+affine='""'
+python dipyreg.py ref_moving/$ref_moving ref_fixed/$ref_fixed $affine warp --intermediate=target/$target --inter_to_reference_aff=$affine_ref_fixed --inter_to_target_aff=$affine_ref_moving --metric=ECC[1.7,4,255] --iter=1,1,0 --step_length=0.25
 date

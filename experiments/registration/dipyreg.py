@@ -64,6 +64,23 @@ parser.add_argument(
            with the obtained deformation field''')
 
 parser.add_argument(
+    '-inter', '--intermediate', action = 'store', metavar = 'intermediate',
+    help = '''Nifti1 image or other formats supported by Nibabel''',
+    default=None)
+
+parser.add_argument(
+    '-i2r', '--inter_to_reference_aff', action = 'store', metavar = 'inter_to_reference_aff',
+    help = '''ANTS affine registration matrix (.txt) that registers target to
+           reference''',
+    default=None)
+
+parser.add_argument(
+    '-i2t', '--inter_to_target_aff', action = 'store', metavar = 'inter_to_target_aff',
+    help = '''ANTS affine registration matrix (.txt) that registers target to
+           reference''',
+    default=None)
+
+parser.add_argument(
     '-tm', '--target_mask', action = 'store', metavar = 'target_mask',
     help = '''Nifti1 image or other formats supported by Nibabel''',
     default=None)
@@ -211,6 +228,9 @@ def print_arguments(params):
     print('========================Parameters========================')
     print('target: ', params.target)
     print('reference: ', params.reference)
+    print('intermediate: ', params.intermediate)
+    print('inter_to_reference_aff: ', params.inter_to_reference_aff)
+    print('inter_to_target_aff: ', params.inter_to_target_aff)
     print('target_mask: ', params.target_mask)
     print('reference_mask: ', params.reference_mask)
     print('affine: ', params.affine)
@@ -261,8 +281,8 @@ def compute_target_overlap(aname, bname, keep_existing = True):
     oname="t_overlap_"+baseA+"_"+baseB+".txt"
     if keep_existing and os.path.exists(oname):
         print('Target overlap overlap found. Skipped computation.')
-        socres=np.loadtxt(oname)
-        return socres
+        scores=np.loadtxt(oname)
+        return scores
     nib_A=nib.load(aname)
     affineA=nib_A.get_affine()
     A=nib_A.get_data().squeeze().astype(np.int32)
@@ -274,10 +294,10 @@ def compute_target_overlap(aname, bname, keep_existing = True):
     B=nib_B.get_data().squeeze().astype(np.int32)
     B=np.copy(B, order='C')
     print("B range:",B.min(), B.max())
-    socres=np.array(evaluation.compute_target_overlap(A,B))
-    print("Target overlap range:",socres.min(), socres.max())
-    np.savetxt(oname,socres)
-    return socres    
+    scores=np.array(evaluation.compute_target_overlap(A,B))
+    print("Target overlap range:",scores.min(), scores.max())
+    np.savetxt(oname,scores)
+    return scores
 
 
 def compute_scores(pairs_fname = 'jaccard_pairs.lst'):
@@ -343,6 +363,17 @@ def save_registration_results(mapping, params):
     if 'inverse' in params.output_list:
         np.save('invDispDiff_'+base_moving+'_'+base_fixed+'.npy', mapping.backward)
 
+
+def load_nifti(fname):
+    image = nib.load(fname)
+    affine = image.get_affine()
+    image = image.get_data().squeeze().astype(np.float64)
+    if fname[-3:] == 'img': # Analyze: w.r.t the center of the image
+        offset = affine[:3,:3].dot(np.array(image.shape)//2)
+        affine[:3,3] += offset
+    return image, affine
+
+
 def register_3d(params):
     r'''
     Runs the non-linear registration with the parsed parameters
@@ -401,54 +432,61 @@ def register_3d(params):
         similarity_metric, opt_iter, step_length, ss_sigma_factor, opt_tol, inv_iter, inv_tol, None)
 
     #Load the data
-    moving = nib.load(params.target)
-    moving_affine = moving.get_affine()
-    fixed = nib.load(params.reference)
-    fixed_affine = fixed.get_affine()
-    moving = moving.get_data().squeeze().astype(np.float64)
-    fixed = fixed.get_data().squeeze().astype(np.float64)
+    moving, moving_affine = load_nifti(params.target)
+    fixed, fixed_affine = load_nifti(params.reference)
 
-    if params.target[-3:] == 'img': # Analyze: w.r.t the center of the image
-        offset = moving_affine[:3,:3].dot(np.array(moving.shape)//2)
-        moving_affine[:3,3] += offset
-
-    if params.reference[-3:] == 'img': # Analyze: w.r.t the center of the image
-        offset = fixed_affine[:3,:3].dot(np.array(fixed.shape)//2)
-        fixed_affine[:3,3] += offset
-
-    print('Affine:', params.affine)
-    if not params.affine:
-        transform = np.eye(4)
-    else:
-        #http://fieldtrip.fcdonders.nl/faq/how_are_the_different_head_and_mri_coordinate_systems_defined
-        if params.reference[:-3] == 'img': # Analyze
-            ref_coordinate_system = 'LAS'
-        else: # DICOM
-            ref_coordinate_system = 'LPS'
-
-        if params.target[:-3] == 'img': # Analyze
-            tgt_coordinate_system = 'LAS'
-        else: # DICOM
-            tgt_coordinate_system = 'LPS'
-        transform = readAntsAffine(params.affine, ref_coordinate_system, tgt_coordinate_system)
-    init_affine = np.linalg.inv(moving_affine).dot(transform.dot(fixed_affine))
-    #Preprocess the data
-    moving = (moving-moving.min())/(moving.max()-moving.min())
-    fixed = (fixed-fixed.min())/(fixed.max()-fixed.min())
-    #Run the registration
-    if params.output_list is not None and 'affine_only' in params.output_list:
-        print('Applying affine only')
-        sh_direct=fixed.shape + (3,)
-        sh_inv=moving.shape + (3,)
-        direct = np.zeros(shape = sh_direct, dtype=np.float32)
-        inv = np.zeros(shape = sh_inv, dtype=np.float32)
-        mapping=imwarp.DiffeomorphicMap(3, direct, inv, None, init_affine)
-    else:
+    # If internediate is not None, we need to run two registrations
+    if params.intermediate is not None:
+        intermediate, intermediate_affine = load_nifti(params.intermediate)
+        inter_to_reference_aff = readAntsAffine(params.inter_to_reference_aff,
+                                                'LPS', 'LPS')
+        inter_to_target_aff = readAntsAffine(params.inter_to_target_aff,
+                                                'LPS', 'LPS')
         registration_optimizer.verbosity = VerbosityLevels.DEBUG
-        mapping = registration_optimizer.optimize(fixed, moving, fixed_affine, moving_affine, transform)
-    del registration_optimizer
-    del similarity_metric
-    save_registration_results(mapping, params)
+        inter_to_ref = registration_optimizer.optimize(fixed, intermediate,
+                                                       fixed_affine,
+                                                       intermediate_affine,
+                                                       inter_to_reference_aff)
+        inter_to_moving = registration_optimizer.optimize(moving, intermediate,
+                                                          moving_affine,
+                                                          intermediate_affine,
+                                                          inter_to_target_aff)
+
+
+    else:
+        print('Affine:', params.affine)
+        if not params.affine:
+            transform = np.eye(4)
+        else:
+            #http://fieldtrip.fcdonders.nl/faq/how_are_the_different_head_and_mri_coordinate_systems_defined
+            if params.reference[:-3] == 'img': # Analyze
+                ref_coordinate_system = 'LAS'
+            else: # DICOM
+                ref_coordinate_system = 'LPS'
+
+            if params.target[:-3] == 'img': # Analyze
+                tgt_coordinate_system = 'LAS'
+            else: # DICOM
+                tgt_coordinate_system = 'LPS'
+            transform = readAntsAffine(params.affine, ref_coordinate_system, tgt_coordinate_system)
+        init_affine = np.linalg.inv(moving_affine).dot(transform.dot(fixed_affine))
+        #Preprocess the data
+        moving = (moving-moving.min())/(moving.max()-moving.min())
+        fixed = (fixed-fixed.min())/(fixed.max()-fixed.min())
+        #Run the registration
+        if params.output_list is not None and 'affine_only' in params.output_list:
+            print('Applying affine only')
+            sh_direct=fixed.shape + (3,)
+            sh_inv=moving.shape + (3,)
+            direct = np.zeros(shape = sh_direct, dtype=np.float32)
+            inv = np.zeros(shape = sh_inv, dtype=np.float32)
+            mapping=imwarp.DiffeomorphicMap(3, direct, inv, None, init_affine)
+        else:
+            registration_optimizer.verbosity = VerbosityLevels.DEBUG
+            mapping = registration_optimizer.optimize(fixed, moving, fixed_affine, moving_affine, transform)
+        del registration_optimizer
+        del similarity_metric
+        save_registration_results(mapping, params)
 
 
 if __name__ == '__main__':
