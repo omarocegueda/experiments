@@ -56,5 +56,5 @@ fi
 
 #Diffeomorphic registration
 affine='""'
-python dipyreg.py ref_moving/$ref_moving ref_fixed/$ref_fixed $affine warp --intermediate=target/$target --inter_to_reference_aff=$affine_ref_fixed --inter_to_target_aff=$affine_ref_moving --metric=ECC[1.7,4,255] --iter=1,1,0 --step_length=0.25
+python dipyreg.py ref_moving/$ref_moving ref_fixed/$ref_fixed $affine warp --intermediate=target/$target --inter_to_reference_aff=$affine_ref_fixed --inter_to_target_aff=$affine_ref_moving --metric=ECC[1.7,4,255] --iter=100,100,25 --step_length=0.25
 date

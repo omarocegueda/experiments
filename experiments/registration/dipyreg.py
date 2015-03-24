@@ -8,9 +8,11 @@ import os
 import numpy as np
 import nibabel as nib
 import dipy.align.imwarp as imwarp
+from dipy.align import floating
 import dipy.align.metrics as metrics
 from dipy.fixes import argparse as arg
 from dipy.align import VerbosityLevels
+import dipy.align.vector_fields as vfu
 from experiments.registration.rcommon import getBaseFileName, decompose_path, readAntsAffine
 import experiments.registration.evaluation as evaluation
 
@@ -311,7 +313,7 @@ def compute_scores(pairs_fname = 'jaccard_pairs.lst'):
             compute_target_overlap(r[2], warped_name, False)
 
 
-def save_registration_results(mapping, params):
+def save_registration_results(mapping, params, mapping2=None):
     r'''
     Warp the target image using the obtained deformation field
     '''
@@ -321,9 +323,28 @@ def save_registration_results(mapping, params):
     warp_dir = params.warp_dir
     base_moving = getBaseFileName(params.target)
     base_fixed = getBaseFileName(params.reference)
-    moving = nib.load(params.target).get_data().squeeze().astype(np.float64)
+    moving = nib.load(params.target)
+    moving_affine = moving.get_affine()
+    moving = moving.get_data().squeeze().astype(np.float64)
     moving = moving.copy(order='C')
-    warped = np.array(mapping.transform(moving, 'linear'))
+    if mapping2 is None:
+        warped = np.array(mapping.transform(moving, 'linear'))
+    else:
+        # Warp by composition: mapping(mapping2_inv(x))
+        # mapping is static to intermediate
+        # mapping2 is moving to intermediate
+        # The final composition is phi1(phi2(x))
+
+        phi1 = mapping2.get_backward_field() # from intermediate to moving
+        phi2 = mapping.get_forward_field() # from static to intermediate
+        A = None # We have a post-align here (phi2 is forward-field of an inverse)
+        B = fixed_affine # grid-to-space of phi2's domain (static domain)
+        C = np.linalg.inv(moving_affine).dot(mapping2.prealign.dot(mapping.prealign_inv))
+        D = mapping2.prealign.dot(mapping.prealign_inv)
+        E = np.linalg.inv(moving_affine)
+        warped = vfu.warp_with_composition_trilinear(phi1, phi2, A, B, C, D, E,
+                                                     moving.astype(floating),
+                                                     reference_shape)
     img_warped = nib.Nifti1Image(warped, fixed_affine)
     img_warped.to_filename('warpedDiff_'+base_moving+'_'+base_fixed+'.nii.gz')
     #---warp all volumes in the warp directory using NN interpolation
@@ -332,7 +353,13 @@ def save_registration_results(mapping, params):
         to_warp = nib.load(name).get_data().squeeze().astype(np.int32)
         to_warp = to_warp.copy(order='C')
         base_warp = getBaseFileName(name)
-        warped = np.array(mapping.transform(to_warp, 'nearest')).astype(np.int16)
+        if mapping2 is None:
+            warped = np.array(mapping.transform(to_warp, 'nearest')).astype(np.int16)
+        else:
+            # Warp by composition: mapping(mapping2_inv(x))
+            warped = np.array(vfu.warp_with_composition_nn(phi1, phi2, A, B, C, D, E,
+                                                         to_warp.astype(np.int32),
+                                                         reference_shape)).astype(np.int16)
         img_warped = nib.Nifti1Image(warped, fixed_affine)
         img_warped.to_filename('warpedDiff_'+base_warp+'_'+base_fixed+'.nii.gz')
     #---now the jaccard indices
@@ -349,19 +376,20 @@ def save_registration_results(mapping, params):
                 else:
                     print('Pair not found ['+cname+'], ['+aname+']')
     #---finally, the optional output
-    if params.output_list == None:
-        return
-    if 'lattice' in params.output_list:
-        save_deformed_lattice_3d(
-            mapping.forward,
-            'latticeDispDiff_'+base_moving+'_'+base_fixed+'.nii.gz')
-    if 'inv_lattice' in params.output_list:
-        save_deformed_lattice_3d(
-            mapping.backward, 'invLatticeDispDiff_'+base_moving+'_'+base_fixed+'.nii.gz')
-    if 'displacement' in params.output_list:
-        np.save('dispDiff_'+base_moving+'_'+base_fixed+'.npy', mapping.forward)
-    if 'inverse' in params.output_list:
-        np.save('invDispDiff_'+base_moving+'_'+base_fixed+'.npy', mapping.backward)
+    if mapping2 is None:
+        if params.output_list == None:
+            return
+        if 'lattice' in params.output_list:
+            save_deformed_lattice_3d(
+                mapping.forward,
+                'latticeDispDiff_'+base_moving+'_'+base_fixed+'.nii.gz')
+        if 'inv_lattice' in params.output_list:
+            save_deformed_lattice_3d(
+                mapping.backward, 'invLatticeDispDiff_'+base_moving+'_'+base_fixed+'.nii.gz')
+        if 'displacement' in params.output_list:
+            np.save('dispDiff_'+base_moving+'_'+base_fixed+'.npy', mapping.forward)
+        if 'inverse' in params.output_list:
+            np.save('invDispDiff_'+base_moving+'_'+base_fixed+'.npy', mapping.backward)
 
 
 def load_nifti(fname):
@@ -451,6 +479,7 @@ def register_3d(params):
                                                           moving_affine,
                                                           intermediate_affine,
                                                           inter_to_target_aff)
+        save_registration_results(inter_to_ref, params, inter_to_moving)
 
 
     else:
