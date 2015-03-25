@@ -103,8 +103,8 @@ fi
 
 
 #Diffeomorphic registration (target towards ref_fixed) using Mutual information with ANTS
-deformationField=${targetbase}_${ref_fixed_base}Warp.nii.gz
-inverseField=${targetbase}_${ref_fixed_base}InverseWarp.nii.gz
+deformationField=${targetbase}_${ref_fixed_base}1Warp.nii.gz
+inverseField=${targetbase}_${ref_fixed_base}1InverseWarp.nii.gz
 op="${targetbase}_${ref_fixed_base}"
 if [ -r $deformationField ]; then
     echo "Deformation found. Registration skipped."
@@ -123,8 +123,8 @@ fi
 
 
 #Diffeomorphic registration (target towards ref_moving) using Mutual information with ANTS
-deformationField=${targetbase}_${ref_moving_base}Warp.nii.gz
-inverseField=${targetbase}_${ref_moving_base}InverseWarp.nii.gz
+deformationField=${targetbase}_${ref_moving_base}1Warp.nii.gz
+inverseField=${targetbase}_${ref_moving_base}1InverseWarp.nii.gz
 op="${targetbase}_${ref_moving_base}"
 if [ -r $deformationField ]; then
     echo "Deformation found. Registration skipped."
@@ -141,9 +141,12 @@ else
 fi
 date
 
-#oname=warpedDiff_${targetbase}_${referencebase}.nii.gz
-#deformationField=${targetbase}_${referencebase}1Warp.nii.gz
-#ntsApplyTransforms -d 3 -i target/$target -o $oname -r reference/$reference -n Linear --float -t $deformationField -t $affine
+oname=warpedDiff_${ref_moving_base}_${ref_fixed_base}.nii.gz
+phi2=${targetbase}_${ref_moving_base}1InverseWarp.nii.gz
+aff2=${affine_ref_moving}
+phi1=${targetbase}_${ref_fixed_base}1Warp.nii.gz
+aff1=${affine_ref_fixed}
+antsApplyTransforms -d 3 -i ref_moving/$ref_moving -o $oname -r ref_fixed/$ref_fixed -n Linear --float -t ${phi1} -t ${aff1} -t ${aff2},useInverse -t ${phi2} 
 
 #for towarp in $( ls warp ); do
 #    towarpbase="${towarp%.*}"
