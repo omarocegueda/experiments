@@ -5,7 +5,7 @@
 #PBS -l pmem=3GB
 #PBS -l vmem=3GB
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=06:00:00
+#PBS -l walltime=08:00:00
 #PBS -N SyNECC
 
 # Configure your environment

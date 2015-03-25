@@ -39,10 +39,13 @@ def average_files():
                     line_scores = np.array([float(line) for line in input.readlines()])
                     max_len = max([max_len, len(line_scores)])
                     scores.append(line_scores)
+                    if np.array(line_scores).max() > 1 or np.array(line_scores).min() < 0:
+                        print("Wrong score:", name)
+
 
             for j, line_scores in enumerate(scores):
                 n = line_scores.shape[0]
-                new_scores = np.ndarray(max_len, dtype=np.double)
+                new_scores = np.zeros(max_len, dtype=np.double)
                 new_scores[:n] = line_scores[...]
                 scores[j] = new_scores
 
