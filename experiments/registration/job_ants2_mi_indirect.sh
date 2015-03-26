@@ -110,7 +110,7 @@ if [ -r $deformationField ]; then
     echo "Deformation found. Registration skipped."
 else
     exe="antsRegistration -d 3 -r $affine_ref_fixed \
-                      -m mattes[ref_fixed/$ref_fixed, target/$target, 1 , 32 ] \
+                      -m mattes[ref_fixed/$ref_fixed, target/$target, 1, 32 ] \
                       -t syn[ .25, 3, 0 ] \
                       -c [ 100x100x25,1e-5,12 ] \
                       -s 1x0.5x0vox \
@@ -130,7 +130,7 @@ if [ -r $deformationField ]; then
     echo "Deformation found. Registration skipped."
 else
     exe="antsRegistration -d 3 -r $affine_ref_moving \
-                      -m mattes[ref_moving/$ref_moving, target/$target 1 , 32 ] \
+                      -m mattes[ref_moving/$ref_moving, target/$target, 1, 32 ] \
                       -t syn[ .25, 3, 0 ] \
                       -c [ 100x100x25,1e-5,12 ] \
                       -s 1x0.5x0vox \
@@ -146,17 +146,18 @@ phi2=${targetbase}_${ref_moving_base}1InverseWarp.nii.gz
 aff2=${affine_ref_moving}
 phi1=${targetbase}_${ref_fixed_base}1Warp.nii.gz
 aff1=${affine_ref_fixed}
-antsApplyTransforms -d 3 -i ref_moving/$ref_moving -o $oname -r ref_fixed/$ref_fixed -n Linear --float -t ${phi1} -t ${aff1} -t ${aff2},useInverse -t ${phi2} 
+antsApplyTransforms -d 3 -i ref_moving/$ref_moving -o $oname -r ref_fixed/$ref_fixed -n Linear --float -t ${phi1} -t ${aff1} -t ["${aff2}", 1] -t ${phi2} 
 
-#for towarp in $( ls warp ); do
-#    towarpbase="${towarp%.*}"
-#    towarpbase="${towarpbase%.*}"
-#    oname=warpedDiff_${towarpbase}_${referencebase}.nii.gz
-#    deformationField=${targetbase}_${referencebase}1Warp.nii.gz
-#    antsApplyTransforms -d 3 -i warp/$towarp -o $oname -r reference/$reference -n NearestNeighbor --float -t $deformationField -t $affine
-#done
-#rm $deformationField
-#rm $inverseField
-#python -c 'from experiments.registration.dipyreg import *; compute_scores()'
+for towarp in $( ls warp ); do
+    towarpbase="${towarp%.*}"
+    towarpbase="${towarpbase%.*}"
+    oname=warpedDiff_${towarpbase}_${ref_fixed}.nii.gz
+    antsApplyTransforms -d 3 -i warp/$towarp -o $oname -r ref_fixed/$ref_fixed -n NearestNeighbor --float -t ${phi1} -t ${aff1} -t ["${aff2}", 1] -t ${phi2}
+done
+rm $phi1
+rm $phi2
+rm ${targetbase}_${ref_fixed_base}1InverseWarp.nii.gz
+rm ${targetbase}_${ref_moving_base}1Warp.nii.gz
+python -c 'from experiments.registration.dipyreg import *; compute_scores()'
 
 
