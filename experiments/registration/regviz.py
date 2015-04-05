@@ -14,7 +14,7 @@ def _tile_plot(imgs, titles, share_ax_with, vertical=False, **kwargs):
         ncols = n
     # Create a new figure and plot the three images
     if share_ax_with is not None:
-        fig = figure()
+        fig = plt.figure()
         ax = []
         for i in range(n):
             new_ax = fig.add_subplot(nrows, ncols, 1+i, sharex=share_ax_with, sharey=share_ax_with)
@@ -31,7 +31,7 @@ def _tile_plot(imgs, titles, share_ax_with, vertical=False, **kwargs):
 
 
 def overlay_slices(L, R, slice_index=None, slice_type=1, ltitle='Left',
-                   rtitle='Right', fname=None, axes_shared=None):
+                   rtitle='Right', fname=None, axes_shared=None, vertical=False):
     r"""Plot three overlaid slices from the given volumes.
 
     Creates a figure containing three images: the gray scale k-th slice of
@@ -106,7 +106,7 @@ def overlay_slices(L, R, slice_index=None, slice_type=1, ltitle='Left',
 
     fig = _tile_plot([ll, colorImage, rr],
                       [ltitle, 'Overlay', rtitle], share_ax_with=axes_shared,
-                      cmap=plt.cm.gray, origin='lower', )
+                      cmap=plt.cm.gray, origin='lower', vertical=vertical)
 
     # Save the figure to disk, if requested
     if fname is not None:
@@ -117,14 +117,18 @@ def overlay_slices(L, R, slice_index=None, slice_type=1, ltitle='Left',
     
 def overlay_slices_with_contours(L, R, slice_index=None, slice_type=1, ltitle='Left',
                                 mid_title="Overlay", rtitle='Right', fname=None, 
-                                ncontours=20, axes_shared=None):
-    f = overlay_slices(L, R, slice_index, slice_type, ltitle, rtitle, fname, axes_shared=axes_shared)
+                                ncontours=20, axes_shared=None, vertical=False, contours_from_right=False):
+    f = overlay_slices(L, R, slice_index, slice_type, ltitle, rtitle, fname, axes_shared=axes_shared, vertical=vertical)
     a = f.get_axes()
     idx = R.shape[slice_type] // 2
-    if slice_type == 0:
-        a[1].contour(L[idx,:,:].transpose(), ncontours, colors='white')
-    elif slice_type == 1:
-        a[1].contour(L[:,idx,:].transpose(), ncontours, colors='white')
+    if contours_from_right:
+        sel = R
     else:
-        a[1].contour(L[:,:,idx].transpose(), ncontours, colors='white')
+        sel = L
+    if slice_type == 0:
+        a[1].contour(sel[idx,:,:].transpose(), ncontours, colors='white')
+    elif slice_type == 1:
+        a[1].contour(sel[:,idx,:].transpose(), ncontours, colors='white')
+    else:
+        a[1].contour(sel[:,:,idx].transpose(), ncontours, colors='white')
     return f
