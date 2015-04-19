@@ -8,6 +8,7 @@ import os
 import numpy as np
 import nibabel as nib
 from dipy.align.imaffine import MattesMIMetric, AffineRegistration, aff_warp
+from dipy.align.transforms import regtransforms
 import dipy.align.imwarp as imwarp
 import dipy.align.metrics as metrics
 from dipy.fixes import argparse as arg
@@ -291,11 +292,12 @@ def register_3d(params):
     sol = np.eye(dim + 1)
     prealign = 'mass'
 
-    for transform in transforms:
-        print('Optimizing: %s'%(transform,))
+    for transform_name in transforms:
+        transform = regtransforms[(transform_name, dim)]
+        print('Optimizing: %s'%(transform_name,))
         x0 = None
         sol = affreg.optimize(static, moving, transform, x0,
-                                 static_affine, moving_affine, prealign = prealign)
+                              static_affine, moving_affine, prealign = prealign)
         prealign = sol.copy()
 
     save_registration_results(sol, params)
