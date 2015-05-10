@@ -7,6 +7,9 @@ import dipy.align.imwarp as imwarp
 from dipy.align import VerbosityLevels
 from experiments.registration.rcommon import getBaseFileName, decompose_path, readAntsAffine
 from dipy.fixes import argparse as arg
+from experiments.registration.evaluation import (compute_densities,
+                                                 sample_from_density,
+                                                 create_ss_de)
 
 parser = arg.ArgumentParser(
     description=""
@@ -29,6 +32,10 @@ parser.add_argument(
 parser.add_argument(
     'warp_dir', action = 'store', metavar = 'warp_dir',
     help = '''Directory (relative to ./ ) containing the template images in other modalities of interest''')
+
+
+
+
 
 def draw_boxplots(means, vars, nrows=1, ncols=1, selected=1, fig=None):
     n = len(means)
@@ -105,7 +112,6 @@ def get_mean_transfer(A, B):
     means[np.isnan(means)] = 0
     vars[np.isnan(vars)] = 0
     return means, vars
-
 
 def create_semi_synthetic(params):
     r''' Create semi-synthetic image using real_mod1 as anatomy and tmp_mod2 template as intensity model
@@ -205,15 +211,23 @@ def create_semi_synthetic(params):
         real_nib = nib.load(real_mod1)
         real = real_nib.get_data().squeeze()
 
-        #Compute transfer function
-        means, vars = get_mean_transfer(real, warped)
-
-        #Apply transfer to real
-
-        real[...] = means[real]
+        use_density_estimation = True
+        nbins = 100
+        if use_density_estimation:
+            # Compute marginal distributions
+            densities = np.array(compute_densities(real, warped, nbins))
+            # Sample the marginal distributions
+            real = create_ss_de(real, densities)
+        else:
+            #Compute transfer function
+            means, vars = get_mean_transfer(real, warped)
+            #Apply transfer to real
+            real[...] = means[real]
 
         #Save semi_synthetic
         real_nib.to_filename(oname)
+
+
 
 
 if __name__ == '__main__':

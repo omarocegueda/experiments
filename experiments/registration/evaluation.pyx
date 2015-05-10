@@ -105,3 +105,236 @@ def compute_target_overlap(int[:,:,:] T, int[:,:,:] S):
                 scores[i]=<double>intersection[i]/<double>target_size[i]
 
     return scores
+
+cdef inline double _cubic_spline(double x) nogil:
+    r''' Cubic B-Spline evaluated at x
+    See eq. (3) of [Matttes03].
+
+    References
+    ----------
+    [Mattes03] Mattes, D., Haynor, D. R., Vesselle, H., Lewellen, T. K.,
+               & Eubank, W. PET-CT image registration in the chest using
+               free-form deformations. IEEE Transactions on Medical Imaging,
+               22(1), 120-8, 2003.
+    '''
+    cdef:
+        double absx = -x if x < 0.0 else x
+        double sqrx = x * x
+
+    if absx < 1.0:
+        return (4.0 - 6.0 * sqrx + 3.0 * sqrx * absx) / 6.0
+    elif absx < 2.0:
+        return (8.0 - 12 * absx + 6.0 * sqrx - sqrx * absx) / 6.0
+    return 0.0
+
+
+def compute_separate_densities(int[:,:,:] labels, double[:,:,:] vol, int nbins):
+    cdef:
+        int ns = vol.shape[0]
+        int nr = vol.shape[1]
+        int nc = vol.shape[2]
+        int padding = 2
+        int k, i, j, offset, lab, bin
+        double x, spline_arg, val
+        double[:] min_val
+        double[:] max_val
+        double[:] delta
+        double[:] sums
+        double[:,:] densities
+        int max_label
+    with nogil:
+        max_label = 0
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    if labels[k,i,j] > max_label:
+                        max_label = labels[k,i,j]
+
+    min_val = np.empty(1 + max_label, dtype=np.float64)
+    max_val = np.empty(1 + max_label, dtype=np.float64)
+    delta = np.empty(1 + max_label, dtype=np.float64)
+    sums = np.zeros(1 + max_label, dtype=np.float64)
+    densities = np.zeros(shape=(1 + max_label, nbins), dtype=np.float64)
+
+    with nogil:
+        for i in range(1 + max_label):
+            min_val[i] = 1e16
+            max_val[i] = -1e16
+
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    val = vol[k,i,j]
+                    lab = labels[k,i,j]
+                    if val < min_val[lab]:
+                        min_val[lab] = val
+                    if val > max_val[lab]:
+                        max_val[lab] = val
+
+        for i in range(1 + max_label):
+            delta[i] = (max_val[i] - min_val[i])/(nbins - 2 * padding)
+            min_val[i] = min_val[i]/delta[i] - padding
+
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    lab = labels[k,i,j]
+                    # find the bin corresponding to intensity samples[i]
+                    x = vol[k,i,j] / delta[lab] - min_val[lab]  # Normalized intensity
+                    bin = <cnp.npy_intp>(x)  # Histogram bin
+                    if bin < padding:
+                        bin = padding
+                    if bin > nbins - 1 - padding:
+                        bin = nbins - 1 - padding
+
+                    # Add contribution of vol[k,i,j] to the histogram
+                    spline_arg = (bin - 2) - x
+
+                    for offset in range(-2, 3):
+                        val = _cubic_spline(spline_arg)
+                        densities[lab, bin + offset] += val
+                        sums[lab] += val
+                        spline_arg += 1.0
+
+        for i in range(1 + max_label):
+            if sums[i] > 0:
+                for j in range(nbins):
+                    densities[i, j] /= sums[i]
+    return densities
+
+
+def compute_densities(int[:,:,:] labels, double[:,:,:] vol, int nbins):
+    cdef:
+        int ns = vol.shape[0]
+        int nr = vol.shape[1]
+        int nc = vol.shape[2]
+        int padding = 2
+        int k, i, j, offset, lab, bin
+        double x, spline_arg, val
+        double min_val, max_val, delta
+        double[:] sums
+        double[:,:] densities
+        int max_label
+    with nogil:
+        max_label = 0
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    if labels[k,i,j] > max_label:
+                        max_label = labels[k,i,j]
+
+    sums = np.zeros(1 + max_label, dtype=np.float64)
+    densities = np.zeros(shape=(1 + max_label, nbins), dtype=np.float64)
+
+    with nogil:
+        min_val = 1e16
+        max_val = -1e16
+
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    val = vol[k,i,j]
+                    if val < min_val:
+                        min_val = val
+                    if val > max_val:
+                        max_val = val
+
+        delta = (max_val - min_val)/(nbins - 2 * padding)
+        min_val = min_val/delta - padding
+
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    lab = labels[k,i,j]
+                    # find the bin corresponding to intensity samples[i]
+                    x = vol[k,i,j] / delta - min_val  # Normalized intensity
+                    bin = <cnp.npy_intp>(x)  # Histogram bin
+                    if bin < padding:
+                        bin = padding
+                    if bin > nbins - 1 - padding:
+                        bin = nbins - 1 - padding
+
+                    # Add contribution of vol[k,i,j] to the histogram
+                    spline_arg = (bin - 2) - x
+
+                    for offset in range(-2, 3):
+                        val = _cubic_spline(spline_arg)
+                        densities[lab, bin + offset] += val
+                        sums[lab] += val
+                        spline_arg += 1.0
+
+        for i in range(1 + max_label):
+            if sums[i] > 0:
+                for j in range(nbins):
+                    densities[i, j] /= sums[i]
+    return densities
+
+
+cdef double _sample_from_density(double[:] s, double u)nogil:
+    cdef:
+        double a, b, mid, frac, eval
+        double epsilon = 1e-6
+        int bin
+    a = 0
+    b = s.shape[0] - 1
+    while (b - a > epsilon):
+        mid = 0.5 * (a + b)
+        # Interpolate at mid
+        bin = <cnp.npy_intp>(mid)
+        frac = mid-bin
+        eval = (1.0 - frac) * s[bin] + frac * s[bin + 1]
+        if eval <= u:
+            a = mid
+        if eval >= u:
+            b = mid
+    return 0.5 * (a + b)
+
+
+def sample_from_density(double[:] density, int nsamples):
+    cdef:
+        int nbins = density.shape[0]
+        int i, bin
+        double a, b, mid, epsilon, frac, eval, target
+        double[:] s = np.zeros(1 + nbins, dtype=np.float64)
+        double[:] samples = np.empty(nsamples, dtype=np.float64)
+        double[:] unif
+
+    unif = np.random.uniform(0, 1, (nsamples,))
+    with nogil:
+        for i in range(1, 1 + nbins):
+            s[i] = s[i-1] + density[i-1]
+
+        for i in range(nsamples):
+            samples[i] = _sample_from_density(s, unif[i])
+    return samples, unif
+
+
+def create_ss_de(int[:,:,:] labels, double[:,:] densities):
+    cdef:
+        int k, i, j, lab
+        int ns = labels.shape[0]
+        int nr = labels.shape[1]
+        int nc = labels.shape[2]
+        int nlabels = densities.shape[0]
+        int nbins = densities.shape[1]
+        double[:,:] s = np.zeros((nlabels, 1 + nbins), dtype=np.float64)
+        double[:,:,:] out
+
+    out = np.random.uniform(0, 1, (ns,nr,nc))
+    with nogil:
+        for lab in range(nlabels):
+            for i in range(1, 1 + nbins):
+                s[lab, i] = s[lab, i-1] + densities[lab, i-1]
+
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    lab = labels[k,i,j]
+                    out[k,i,j] = _sample_from_density(s[lab], out[k,i,j])
+    return out
+
+
+
+
+
+
