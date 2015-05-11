@@ -206,7 +206,10 @@ def create_semi_synthetic(params):
         else:
             oname += '.nii.gz'
 
+        # Save warped image
         warped = mapping.transform(t_mod2)
+        wnib = nib.Nifti1Image(warped, t_mod2_aff)
+        wnib.to_filename('warpedDiff_'+oname)
 
         real_nib = nib.load(real_mod1)
         real = real_nib.get_data().squeeze()
