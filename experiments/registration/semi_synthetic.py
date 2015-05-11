@@ -1,4 +1,5 @@
 import os
+import os.path
 import numpy as np
 import experiments.registration.dataset_info as info
 import nibabel as nib
@@ -120,9 +121,24 @@ def create_semi_synthetic(params):
     The transfer function is computed from real_mod1 to warped tmp_mod2 and applied to real_mod1.
     '''
     real_mod1 = params.real
+    base_fixed = getBaseFileName(real_mod1)
     tmp_mod1 = params.template
     prealign_name = params.prealign
     tmp_mod2_list = [os.path.join(params.warp_dir, name) for name in os.listdir(params.warp_dir)]
+    tmp_mod2_list = [tmp_mod1] + tmp_mod2_list
+    # Check if all warpings are already done
+    warp_done = os.path.isfile('mask_'+base_fixed+'.nii.gz')
+    if warp_done:
+        for tmp_mod2 in tmp_mod2_list:
+            base_moving = getBaseFileName(tmp_mod2)
+            wname = 'warpedDiff_'+base_moving+'_'+base_fixed
+            if real_mod1[-3:] == 'img': # Analyze
+                wname += '.img'
+            else:
+                wname += '.nii.gz'
+            if not os.path.isfile(wname):
+                warp_done = False
+                break
 
     #Load input images
     real_nib = nib.load(real_mod1)
@@ -166,34 +182,38 @@ def create_semi_synthetic(params):
     inv_iter = 20
     inv_tol = 1e-3
     ss_sigma_factor = 0.2
-    syn = imwarp.SymmetricDiffeomorphicRegistration(similarity_metric,
-                                                    opt_iter,
-                                                    step_length,
-                                                    ss_sigma_factor,
-                                                    opt_tol,
-                                                    inv_iter,
-                                                    inv_tol,
-                                                    callback = None)
-    #Run registration
-    syn.verbosity = VerbosityLevels.DEBUG
-    mapping = syn.optimize(real, t_mod1, real_aff, t_mod1_aff, prealign)
-
-    #Transform templates (opposite modality)
-    base_fixed = getBaseFileName(real_mod1)
-
-    #Save the warped template (so we can visually check the registration result)
-    warped = mapping.transform(t_mod1)
-    base_moving = getBaseFileName(tmp_mod1)
-    oname = 'warpedDiff_'+base_moving+'_'+base_fixed
-    if real_mod1[-3:] == 'img': # Analyze
-        oname += '.img'
+    if not warp_done:
+        syn = imwarp.SymmetricDiffeomorphicRegistration(similarity_metric,
+                                                        opt_iter,
+                                                        step_length,
+                                                        ss_sigma_factor,
+                                                        opt_tol,
+                                                        inv_iter,
+                                                        inv_tol,
+                                                        callback = None)
+        #Run registration
+        syn.verbosity = VerbosityLevels.DEBUG
+        mapping = syn.optimize(real, t_mod1, real_aff, t_mod1_aff, prealign)
+        #Save the warped template (so we can visually check the registration result)
+        warped = mapping.transform(t_mod1)
+        base_moving = getBaseFileName(tmp_mod1)
+        oname = 'warpedDiff_'+base_moving+'_'+base_fixed
+        if real_mod1[-3:] == 'img': # Analyze
+            oname += '.img'
+        else:
+            oname += '.nii.gz'
+        real[...] = warped[...]
+        real_nib.to_filename(oname)
+        mask = (t_mod1 > 0).astype(np.int32)
+        wmask = mapping.transform(mask, 'nearest')
+        wmask_nib = nib.Nifti1Image(wmask, t_mod1_aff)
+        wmask_nib.to_filename('mask_'+base_fixed+'.nii.gz')
     else:
-        oname += '.nii.gz'
-    real[...] = warped[...]
-    real_nib.to_filename(oname)
+        wmask_nib = nib.load('mask_'+base_fixed+'.nii.gz')
+        wmask = wmask_nib.get_data().squeeze()
 
     #Compute and save the semi-synthetic images in different modalities
-    for tmp_mod2 in [tmp_mod1] + tmp_mod2_list:
+    for tmp_mod2 in tmp_mod2_list:
         print('Warping: '+tmp_mod2)
         t_mod2_nib = nib.load(tmp_mod2)
         t_mod2_aff = t_mod2_nib.get_affine()
@@ -206,10 +226,14 @@ def create_semi_synthetic(params):
         else:
             oname += '.nii.gz'
 
-        # Save warped image
-        warped = mapping.transform(t_mod2)
-        wnib = nib.Nifti1Image(warped, t_mod2_aff)
-        wnib.to_filename('warpedDiff_'+oname)
+        if not warp_done:
+            # Save warped image
+            warped = mapping.transform(t_mod2)
+            wnib = nib.Nifti1Image(warped, t_mod2_aff)
+            wnib.to_filename('warpedDiff_'+oname)
+        else:
+            wnib = nib.load('warpedDiff_'+oname)
+            warped = wnib.get_data().squeeze()
 
         real_nib = nib.load(real_mod1)
         real = real_nib.get_data().squeeze()
@@ -220,8 +244,6 @@ def create_semi_synthetic(params):
             print('Using density sampling.')
             oname = 'ssds_' + oname
             # Compute marginal distributions
-            mask = (t_mod2 > 0).astype(np.int32)
-            wmask = mapping.transform(mask, 'nearest')
             densities = np.array(compute_densities(real.astype(np.int32), warped.astype(np.float64), nbins, wmask))
             # Sample the marginal distributions
             real[...] = create_ss_de(real.astype(np.int32), densities)
