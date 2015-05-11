@@ -233,7 +233,7 @@ def compute_densities(int[:,:,:] labels, double[:,:,:] vol, int nbins, int[:,:,:
         for k in range(ns):
             for i in range(nr):
                 for j in range(nc):
-                    if mask is not None and mask[k,i,j] != 0:
+                    if mask is None or mask[k,i,j] == 0:
                         continue
                     val = vol[k,i,j]
                     if val < min_val:
@@ -247,7 +247,7 @@ def compute_densities(int[:,:,:] labels, double[:,:,:] vol, int nbins, int[:,:,:
         for k in range(ns):
             for i in range(nr):
                 for j in range(nc):
-                    if mask is not None and mask[k,i,j] != 0:
+                    if mask is None or mask[k,i,j] == 0:
                         continue
                     lab = labels[k,i,j]
                     # find the bin corresponding to intensity samples[i]
@@ -334,7 +334,10 @@ def create_ss_de(int[:,:,:] labels, double[:,:] densities):
             for i in range(nr):
                 for j in range(nc):
                     lab = labels[k,i,j]
-                    out[k,i,j] = _sample_from_density(s[lab], out[k,i,j])
+                    if lab == 0:
+                        out[k,i,j] = 0
+                    else:
+                        out[k,i,j] = _sample_from_density(s[lab], out[k,i,j])
     return out
 
 
