@@ -200,7 +200,7 @@ def create_semi_synthetic(params):
         t_mod2 = t_mod2_nib.get_data().squeeze()
 
         base_moving = getBaseFileName(tmp_mod2)
-        oname = 'ss_'+base_moving+'_'+base_fixed
+        oname = base_moving+'_'+base_fixed
         if real_mod1[-3:] == 'img': # Analyze
             oname += '.img'
         else:
@@ -214,11 +214,15 @@ def create_semi_synthetic(params):
         use_density_estimation = True
         nbins = 100
         if use_density_estimation:
+            print('Using density sampling.')
+            oname = 'ssds_' + oname
             # Compute marginal distributions
-            densities = np.array(compute_densities(real, warped, nbins))
+            densities = np.array(compute_densities(real.astype(np.int32), warped.astype(np.float64), nbins))
             # Sample the marginal distributions
-            real = create_ss_de(real, densities)
+            real = create_ss_de(real.astype(np.int32), densities)
         else:
+            print('Using mean transfer.')
+            oname = 'ssmt_' + oname
             #Compute transfer function
             means, vars = get_mean_transfer(real, warped)
             #Apply transfer to real
