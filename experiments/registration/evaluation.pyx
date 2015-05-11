@@ -203,7 +203,7 @@ def compute_separate_densities(int[:,:,:] labels, double[:,:,:] vol, int nbins):
     return densities
 
 
-def compute_densities(int[:,:,:] labels, double[:,:,:] vol, int nbins):
+def compute_densities(int[:,:,:] labels, double[:,:,:] vol, int nbins, int[:,:,:] mask=None):
     cdef:
         int ns = vol.shape[0]
         int nr = vol.shape[1]
@@ -233,6 +233,8 @@ def compute_densities(int[:,:,:] labels, double[:,:,:] vol, int nbins):
         for k in range(ns):
             for i in range(nr):
                 for j in range(nc):
+                    if mask is not None and mask[k,i,j] != 0:
+                        continue
                     val = vol[k,i,j]
                     if val < min_val:
                         min_val = val
@@ -245,6 +247,8 @@ def compute_densities(int[:,:,:] labels, double[:,:,:] vol, int nbins):
         for k in range(ns):
             for i in range(nr):
                 for j in range(nc):
+                    if mask is not None and mask[k,i,j] != 0:
+                        continue
                     lab = labels[k,i,j]
                     # find the bin corresponding to intensity samples[i]
                     x = vol[k,i,j] / delta - min_val  # Normalized intensity

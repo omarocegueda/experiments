@@ -217,9 +217,11 @@ def create_semi_synthetic(params):
             print('Using density sampling.')
             oname = 'ssds_' + oname
             # Compute marginal distributions
-            densities = np.array(compute_densities(real.astype(np.int32), warped.astype(np.float64), nbins))
+            mask = (t_mod2 > 0).astype(np.int32)
+            wmask = mapping.transform(mask, 'nearest')
+            densities = np.array(compute_densities(real.astype(np.int32), warped.astype(np.float64), nbins, wmask))
             # Sample the marginal distributions
-            real = create_ss_de(real.astype(np.int32), densities)
+            real[...] = create_ss_de(real.astype(np.int32), densities)
         else:
             print('Using mean transfer.')
             oname = 'ssmt_' + oname
