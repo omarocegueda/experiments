@@ -5,7 +5,7 @@ do
     else
         idx="0${i}"
     fi
-    name=(`ls ${idx}/*pd*`)
-    new_name="/home/omar/data/IBSR_nifti_stripped/IBSR_${idx}/IBSR_${idx}_ana_strip_pd.nii.gz"
+    name=(`ls ${idx}/ss*t2*`)
+    new_name="/home/omar/data/IBSR_nifti_stripped/IBSR_${idx}/IBSR_${idx}_ana_strip_t2_ds.nii.gz"
     mv ${name} ${new_name}
 done
