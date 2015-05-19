@@ -6,7 +6,7 @@
 #PBS -l vmem=8GB
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=06:00:00
-#PBS -N ANTS2-MI
+#PBS -N ANTS2-GC
 
 # Configure your environment
 export DIPY_DIR="$HOME/opt/dipy"
