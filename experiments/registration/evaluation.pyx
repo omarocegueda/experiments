@@ -341,7 +341,82 @@ def create_ss_de(int[:,:,:] labels, double[:,:] densities):
     return out
 
 
+def create_ss_mode(int[:,:,:] labels, double[:,:] densities):
+    cdef:
+        int k, i, j, lab
+        int ns = labels.shape[0]
+        int nr = labels.shape[1]
+        int nc = labels.shape[2]
+        int nlabels = densities.shape[0]
+        int nbins = densities.shape[1]
+        int[:] modes = np.empty(nlabels, dtype=np.int32)
+        double[:,:,:] out
+
+    out = np.random.uniform(0, 1, (ns,nr,nc))
+    with nogil:
+        modes[0] = 0
+        for lab in range(1, nlabels):
+            modes[lab] = 0
+            for i in range(1, nbins):
+                if densities[lab, modes[lab]] < densities[lab, i]:
+                    modes[lab] = i
+
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    lab = labels[k,i,j]
+                    out[k,i,j] = modes[lab]
+    return out
 
 
+def create_ss_median(int[:,:,:] labels, double[:,:] densities):
+    cdef:
+        int k, i, j, lab
+        int ns = labels.shape[0]
+        int nr = labels.shape[1]
+        int nc = labels.shape[2]
+        int nlabels = densities.shape[0]
+        int nbins = densities.shape[1]
+        double[:,:] s = np.zeros((nlabels, 1 + nbins), dtype=np.float64)
+        double[:,:,:] out = np.empty((ns, nr, nc), dtype=np.float64)
+        double[:] medians = np.empty(nlabels, dtype=np.float64)
 
+    with nogil:
+        for lab in range(nlabels):
+            for i in range(1, 1 + nbins):
+                s[lab, i] = s[lab, i-1] + densities[lab, i-1]
+        medians[0] = 0
+        for lab in range(1, nlabels):
+            medians[lab] = _sample_from_density(s[lab], 0.5)
+
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    lab = labels[k,i,j]
+                    out[k,i,j] = medians[lab]
+    return out
+
+
+def create_ss_mean(int[:,:,:] labels, double[:,:] densities):
+    cdef:
+        int k, i, j, lab
+        int ns = labels.shape[0]
+        int nr = labels.shape[1]
+        int nc = labels.shape[2]
+        int nlabels = densities.shape[0]
+        int nbins = densities.shape[1]
+        double[:] means = np.zeros(nlabels, dtype=np.float64)
+        double[:,:,:] out = np.empty((ns, nr, nc), dtype=np.float64)
+
+    with nogil:
+        for lab in range(1, nlabels):
+            for i in range(1, nbins):
+                means[lab] += densities[lab, i] * i
+
+        for k in range(ns):
+            for i in range(nr):
+                for j in range(nc):
+                    lab = labels[k,i,j]
+                    out[k,i,j] = means[lab]
+    return out
 

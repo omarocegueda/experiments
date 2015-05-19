@@ -1,16 +1,17 @@
 # Requires dipy.align.cc_residuals from imaffine branch
-import matplotlib.pyplot as plt
 from experiments.registration.dataset_info import *
 from experiments.registration.semi_synthetic import *
 import nibabel as nib
-import dipy.viz.regtools as rt
-import experiments.registration.regviz as rv
 import dipy.align.cc_residuals as ccr
 from experiments.registration.rcommon import readAntsAffine
 import dipy.align.vector_fields as vfu
 from scipy.linalg import eig, eigvals, solve, lstsq
 from dipy.core.optimize import Optimizer
 import os.path
+
+import matplotlib.pyplot as plt
+import dipy.viz.regtools as rt
+import experiments.registration.regviz as rv
 
 from numpy.testing import (assert_equal,
                            assert_almost_equal,
@@ -123,7 +124,8 @@ t2 = (t2.astype(np.float64) - t2.min())/(t2.max()-t2.min())
 
 
 # Compute transfer for optimal local-linearity
-radius = 4
+radius = 5
+init_from_mean = True
 nlabels_t1 = 1 + np.max(t1_lab)
 nlabels_t2 = 1 + np.max(t2_lab)
 
@@ -146,9 +148,12 @@ def value_and_gradient_t2lab(x, *args):
 
 
 options = {'maxiter': 20}
-# f0 = fmean_t1lab
-f0 = np.random.uniform(0,1,len(fmean_t1lab))
-ofname = 'fopt_t1lab.npy'
+if init_from_mean:
+    f0 = fmean_t1lab
+else:
+    f0 = np.random.uniform(0,1,len(fmean_t1lab))
+
+ofname = 'fopt_t1lab_'+str(radius)+'.npy'
 fopt_t1lab = None
 if os.path.isfile(ofname):
     fopt_t1lab = np.load(ofname)
@@ -158,9 +163,12 @@ else:
     np.save(ofname, fopt_t1lab)
 
 options = {'maxiter': 20}
-# f0 = fmean_t2lab
-f0 = np.random.uniform(0,1,len(fmean_t2lab))
-ofname = 'fopt_t2lab.npy'
+if init_from_mean:
+    f0 = fmean_t2lab
+else:
+    f0 = np.random.uniform(0,1,len(fmean_t2lab))
+
+ofname = 'fopt_t2lab_'+str(radius)+'.npy'
 fopt_t2lab = None
 if os.path.isfile(ofname):
     fopt_t2lab = np.load(ofname)
@@ -173,14 +181,16 @@ else:
 # Compare mean vs. optimal transfers : t2lab
 markers = ['o','D','s','^']
 linestyles = ['-', '--', '--', '--']
-def compare_transfers(ax, fmean, fopt, fmean_legend, fopt_legend, legend_location):
+def compare_transfers(ax, fmean, fopt, fmean_legend, fopt_legend, legend_location, xlabel='', ylabel=''):
     line, = ax.plot(range(0, len(fmean)), fmean, linestyle=linestyles[1])
     line.set_label(fmean_legend)
     line, = ax.plot(range(0, len(fmean)), fopt, linestyle=linestyles[0])
     line.set_label(fopt_legend)
-    ax.legend(loc=legend_location, fontsize=14)
+    ax.legend(loc=legend_location, fontsize=16)
     plt.grid()
     plt.xlim(0,len(fmean) - 1)
+    plt.xlabel(xlabel, fontsize=18)
+    plt.ylabel(ylabel, fontsize=18)
 
 # Normalize fopt_t2lab and fmean_t2lab
 fopt_t2lab_norm = fopt_t2lab * -1 # flip opt
@@ -196,9 +206,9 @@ fmean_t2lab_norm = (fmean_t2lab - min_mean)/(fmean_t2lab.max() - min_mean)
 
 t2lab_fig = plt.figure()
 ax = t2lab_fig.add_subplot(1,2,1)
-compare_transfers(ax, fmean_t2lab, fopt_t2lab_nz, "Iso-set mean", "Optimized", 2)
+compare_transfers(ax, fmean_t2lab, fopt_t2lab_nz, "Iso-set mean", "Optimized", 2, 'T2', 'F[T2]')
 ax = t2lab_fig.add_subplot(1,2,2)
-compare_transfers(ax, fmean_t2lab_norm, fopt_t2lab_norm, "Iso-set mean (normalized to [0,1])", "Optimized (flipped & normalized to [0,1])", 1)
+compare_transfers(ax, fmean_t2lab_norm, fopt_t2lab_norm, "Iso-set mean (normalized to [0,1])", "Optimized (flipped & normalized to [0,1])", 1, 'T2', 'F[T2]')
 
 # Normalize fopt_t1lab and fmean_t1lab
 fopt_t1lab_norm = fopt_t1lab * -1 # flip opt
@@ -214,15 +224,25 @@ fmean_t1lab_norm = (fmean_t1lab - min_mean)/(fmean_t1lab.max() - min_mean)
 
 t1lab_fig = plt.figure()
 ax = t1lab_fig.add_subplot(1,2,1)
-compare_transfers(ax, fmean_t1lab, fopt_t1lab_nz, "Iso-set mean", "Optimized", 2)
+compare_transfers(ax, fmean_t1lab, fopt_t1lab_nz, "Iso-set mean", "Optimized", 2, 'T1', 'F[T1]')
 ax = t1lab_fig.add_subplot(1,2,2)
-compare_transfers(ax, fmean_t1lab_norm, fopt_t1lab_norm, "Iso-set mean (normalized to [0,1])", "Optimized (flipped & normalized to [0,1])", 1)
+compare_transfers(ax, fmean_t1lab_norm, fopt_t1lab_norm, "Iso-set mean (normalized to [0,1])", "Optimized (flipped & normalized to [0,1])", 1, 'T1', 'F[T1]')
 
 
 
 
 
 
+# Check transfer functions with different window sizes
+opt_list = {}
+diff = {}
+for s in range(2,6):
+    #t1lab
+    fname = 'fopt_t1lab_'+str(s)+'.npy'
+    fopt = np.load(fname) 
+    opt_list[s] = fopt
+    diff[s] = np.sqrt((np.abs(fmean_t1lab - fopt)**2).sum())
+    
 
 
 

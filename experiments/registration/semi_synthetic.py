@@ -259,7 +259,99 @@ def create_semi_synthetic(params):
         real_nib.to_filename(oname)
 
 
+def test_density_sampling():
+    import os
+    import os.path
+    import numpy as np
+    import experiments.registration.dataset_info as info
+    import nibabel as nib
+    import dipy.align.metrics as metrics
+    import dipy.align.imwarp as imwarp
+    from dipy.align import VerbosityLevels
+    from experiments.registration.rcommon import getBaseFileName, decompose_path, readAntsAffine
+    from dipy.fixes import argparse as arg
+    from experiments.registration.evaluation import (compute_densities,
+                                                     sample_from_density,
+                                                     create_ss_de,
+                                                     create_ss_mode,
+                                                     create_ss_median,
+                                                     create_ss_mean)
+    from experiments.registration.splines import CubicSpline
+    import dipy.viz.regtools as rt
+    i1_name = info.get_ibsr(1, 'strip')
+    i1_nib = nib.load(i1_name)
+    i1 = i1_nib.get_data().squeeze()
+    mask = (i1 > 0).astype(np.int32)
+    
+    wt1_name = 'warpedDiff_brainweb_t2_strip_IBSR_01_ana_strip.nii.gz'
+    wt1_nib = nib.load(wt1_name)
+    wt1 = wt1_nib.get_data().squeeze()
+    
+    
+    rt.overlay_slices(i1, wt1)
+    nbins = 100
+    densities = compute_densities(i1.astype(np.int32), wt1.astype(np.float64), nbins, mask)
+    figure()
+    imshow(densities)
+    
+    # Compare different estimators
+    ss_sampled = create_ss_de(i1.astype(np.int32), densities)
+    ss_mode = create_ss_mode(i1.astype(np.int32), densities)
+    ss_median = create_ss_median(i1.astype(np.int32), densities)
+    ss_mean = create_ss_mean(i1.astype(np.int32), densities)
+    
+    rt.overlay_slices(ss_sampled, i1)
+    rt.overlay_slices(ss_mode, i1)
+    rt.overlay_slices(ss_median, i1)
+    rt.overlay_slices(ss_mean, i1)
+    
+    s1 = ss_sampled[:, ss_sampled.shape[1]//2, :].T
+    s2 = ss_mode[:, ss_mode.shape[1]//2, :].T
+    s3 = ss_median[:, ss_median.shape[1]//2, :].T
+    s4 = ss_mean[:, ss_mean.shape[1]//2, :].T
+    slices = [[s1,s2],[s3,s4]]
+    titles = [['Sampled', 'Mode'], ['Median', 'Mean']]
+    
+    fig, ax = plt.subplots(2, 2)
+    fig.set_facecolor('white') 
+    for ii, a_row in enumerate(ax):
+        for jj, a, in enumerate(a_row):
+            a.set_axis_off()
+            a.imshow(slices[ii][jj], cmap=cm.gray, origin='lower')
+            a.set_title(titles[ii][jj])
+    
+    
+    # Fit densities with splines in a regular grid
+    f = densities[100]
+    kspacing = 1  # Number of grid cells between spline knots
+    spline = CubicSpline(kspacing)
+    coef = spline.fit_to_data(f)
+    # Check fit
+    fit = spline.evaluate(coef, nbins)
+    figure()
+    plot(f)
+    plot(fit)
+    # And the derivative
+    df = spline.evaluate(coef, nbins, 1)
+    figure()
+    plot(f)
+    plot(df)
+    
+    fit = np.zeros_like(densities)
+    for i in range(densities.shape[0]):
+        coef = spline.fit_to_data(densities[i])
+        fit[i,:] = spline.evaluate(coef, nbins)
+    fig = plt.figure()
+    ax = fig.add_subplot(1,2,1)
+    ax.imshow(densities)
+    ax = fig.add_subplot(1,2,2)
+    ax.imshow(fit)
+        
+    
+    
 
+    
+    
 
 if __name__ == '__main__':
       import time
