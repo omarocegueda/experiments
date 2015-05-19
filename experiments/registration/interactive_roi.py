@@ -145,8 +145,6 @@ def value_and_gradient_t2lab(x, *args):
     print("Energy:%f"%(val,))
     return val, np.array(grad)
 
-
-
 options = {'maxiter': 20}
 if init_from_mean:
     f0 = fmean_t1lab
