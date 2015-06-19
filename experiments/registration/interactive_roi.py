@@ -190,6 +190,25 @@ def compare_transfers(ax, fmean, fopt, fmean_legend, fopt_legend, legend_locatio
     plt.xlabel(xlabel, fontsize=18)
     plt.ylabel(ylabel, fontsize=18)
 
+def normalize(fopt, fmean=None, flip=False):
+    if flip:
+        fopt_norm = fopt * -1
+    else:
+        fopt_norm = fopt.copy()
+    min_opt = fopt_norm.min()
+    delta_opt = fopt_norm.max() - min_opt
+    fopt_norm = (fopt_norm - min_opt)/delta_opt
+    fopt_nz = fopt_norm.copy()
+    if fmean is not None:
+        fopt_nz[fmean == 0] = 0
+    return fopt_nz
+
+min_mean = fmean_t1lab.min()
+delta_mean = fmean_t1lab.max() - min_mean
+fmean_t1lab_norm = (fmean_t1lab - min_mean)/(fmean_t1lab.max() - min_mean)
+
+
+
 # Normalize fopt_t2lab and fmean_t2lab
 fopt_t2lab_norm = fopt_t2lab * -1 # flip opt
 min_opt = fopt_t2lab_norm.min()
@@ -232,18 +251,45 @@ compare_transfers(ax, fmean_t1lab_norm, fopt_t1lab_norm, "Iso-set mean (normaliz
 
 
 # Check transfer functions with different window sizes
-opt_list = {}
-diff = {}
-for s in range(2,6):
+opt_list_t1lab = {}
+diff_t1lab = {}
+opt_list_t2lab = {}
+diff_t2lab = {}
+max_size = 9
+for s in range(2,max_size+1):
     #t1lab
     fname = 'fopt_t1lab_'+str(s)+'.npy'
-    fopt = np.load(fname) 
-    opt_list[s] = fopt
-    diff[s] = np.sqrt((np.abs(fmean_t1lab - fopt)**2).sum())
-    
+    fopt = np.load(fname)
+    opt_list_t1lab[s] = fopt
+    diff_t1lab[s] = np.sqrt((np.abs(fmean_t1lab - fopt)**2).sum())
+
+    fname = 'fopt_t2lab_'+str(s)+'.npy'
+    fopt = np.load(fname)
+    opt_list_t2lab[s] = fopt
+    diff_t2lab[s] = np.sqrt((np.abs(fmean_t2lab - fopt)**2).sum())
+
+# Plot RMSE graphs
+rmse_t1lab = [diff_t1lab[i] for i in range(2, max_size+1)]
+rmse_t2lab = [diff_t2lab[i] for i in range(2, max_size+1)]
+fig = plt.figure()
+ax = fig.add_subplot(1,1,1)
+ax.set_xticks(range(2,max_size+1))
+ax.set_xlabel('Window size', fontsize=24)
+ax.set_ylabel('RMSE', fontsize=24)
+line, = plot(range(2, max_size+1), rmse_t1lab)
+line.set_label('T2 as a function of T1')
+line, = plot(range(2, max_size+1), rmse_t2lab)
+line.set_label('T1 as a function of T2')
+ax.legend(loc=1, fontsize=24)
+plt.grid()
 
 
 
+fig = plt.figure()
+ax = fig.add_subplot(1,2,1)
+compare_transfers(ax, fmean_t1lab, opt_list_t1lab[4], "Iso-set mean", "Optimized", 1, 'T1', 'F[T1]')
+ax = fig.add_subplot(1,2,2)
+compare_transfers(ax, fmean_t2lab, opt_list_t2lab[4], "Iso-set mean", "Optimized", 1, 'T2', 'F[T2]')
 
 
 # Apply the transfer

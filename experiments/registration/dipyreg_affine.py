@@ -268,9 +268,14 @@ def register_3d(params):
     sigmas = [float(i) for i in params.sigmas.split(',')]
     #method = 'CGGS'
     method = params.method
-    affreg = AffineRegistration(metric, method, opt_iter, opt_tol, ss_sigma_factor,
-                                factors, sigmas, None)
-
+    affreg = AffineRegistration(metric=metric,
+                                level_iters=opt_iter,
+                                opt_tol=opt_tol,
+                                sigmas=sigmas,
+                                factors=factors,
+                                method=method,
+                                ss_sigma_factor=ss_sigma_factor,
+                                options=None)
     #Load the data
     moving_nib = nib.load(params.moving)
     moving_affine = moving_nib.get_affine()

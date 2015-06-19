@@ -109,5 +109,6 @@ def get_scil(idx, data):
         idx = '0'+str(idx)
     else:
         idx = str(idx)
-    prefix = scil_base_dir + 'IBSR_'+idx+'/IBSR_'+idx
-    fname = prefix + data
+    prefix = scil_base_dir + 'SCIL_' + idx + '/SCIL_' + idx + '_'
+    fname = prefix + data + '.nii.gz'
+    return fname
