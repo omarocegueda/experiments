@@ -1,8 +1,7 @@
-# Requires dipy.align.cc_residuals from imaffine branch
 from experiments.registration.dataset_info import *
 from experiments.registration.semi_synthetic import *
 import nibabel as nib
-import dipy.align.cc_residuals as ccr
+import cc_residuals as ccr
 from experiments.registration.rcommon import readAntsAffine
 import dipy.align.vector_fields as vfu
 from scipy.linalg import eig, eigvals, solve, lstsq
@@ -105,226 +104,6 @@ def analyze_roi(p, delta, mod1, ss_mod1, mod1_name, mod2, ss_mod2, mod2_name, re
     check_function(x_ss_t2, y_ss_t2, mod2_name, "F["+mod1_name+"]", 0)
     check_function(x_ss_t2, y_ss_t2, mod2_name, "F["+mod1_name+"]", 1)
 
-
-# Load data
-t1_name = t1_name = get_brainweb("t1", "strip")
-t1_nib = nib.load(t1_name)
-t1 = t1_nib.get_data().squeeze()
-t1_lab = t1.astype(np.int32)
-t1 = t1.astype(np.float64)
-t1 = (t1.astype(np.float64) - t1.min())/(t1.max()-t1.min())
-
-
-t2_name = t2_name = get_brainweb("t2", "strip")
-t2_nib = nib.load(t2_name)
-t2 = t2_nib.get_data().squeeze()
-t2_lab = t2.astype(np.int32)
-t2 = t2.astype(np.float64)
-t2 = (t2.astype(np.float64) - t2.min())/(t2.max()-t2.min())
-
-
-# Compute transfer for optimal local-linearity
-radius = 5
-init_from_mean = True
-nlabels_t1 = 1 + np.max(t1_lab)
-nlabels_t2 = 1 + np.max(t2_lab)
-
-means_t1t2, vars_t1t2 = get_mean_transfer(t1_lab, t2)
-fmean_t1lab = np.array(means_t1t2)
-
-means_t2t1, vars_t2t1 = get_mean_transfer(t2_lab, t1)
-fmean_t2lab = np.array(means_t2t1)
-
-def value_and_gradient_t1lab(x, *args):
-    val, grad = ccr.compute_transfer_value_and_gradient(x, t1_lab, nlabels_t1, t2, radius)
-    print("Energy:%f"%(val,))
-    return val, np.array(grad)
-
-def value_and_gradient_t2lab(x, *args):
-    val, grad = ccr.compute_transfer_value_and_gradient(x, t2_lab, nlabels_t2, t1, radius)
-    print("Energy:%f"%(val,))
-    return val, np.array(grad)
-
-options = {'maxiter': 20}
-if init_from_mean:
-    f0 = fmean_t1lab
-else:
-    f0 = np.random.uniform(0,1,len(fmean_t1lab))
-
-ofname = 'fopt_t1lab_'+str(radius)+'.npy'
-fopt_t1lab = None
-if os.path.isfile(ofname):
-    fopt_t1lab = np.load(ofname)
-else:
-    opt_t1lab = Optimizer(value_and_gradient_t1lab, f0, "BFGS", jac = True, options=options)
-    fopt_t1lab = opt_t1lab.xopt
-    np.save(ofname, fopt_t1lab)
-
-options = {'maxiter': 20}
-if init_from_mean:
-    f0 = fmean_t2lab
-else:
-    f0 = np.random.uniform(0,1,len(fmean_t2lab))
-
-ofname = 'fopt_t2lab_'+str(radius)+'.npy'
-fopt_t2lab = None
-if os.path.isfile(ofname):
-    fopt_t2lab = np.load(ofname)
-else:
-    opt_t2lab = Optimizer(value_and_gradient_t2lab, f0, "BFGS", jac = True, options=options)
-    fopt_t2lab = opt_t2lab.xopt
-    np.save(ofname, fopt_t2lab)
-
-
-# Compare mean vs. optimal transfers : t2lab
-markers = ['o','D','s','^']
-linestyles = ['-', '--', '--', '--']
-def compare_transfers(ax, fmean, fopt, fmean_legend, fopt_legend, legend_location, xlabel='', ylabel=''):
-    line, = ax.plot(range(0, len(fmean)), fmean, linestyle=linestyles[1])
-    line.set_label(fmean_legend)
-    line, = ax.plot(range(0, len(fmean)), fopt, linestyle=linestyles[0])
-    line.set_label(fopt_legend)
-    ax.legend(loc=legend_location, fontsize=16)
-    plt.grid()
-    plt.xlim(0,len(fmean) - 1)
-    plt.xlabel(xlabel, fontsize=18)
-    plt.ylabel(ylabel, fontsize=18)
-
-def normalize(fopt, fmean=None, flip=False):
-    if flip:
-        fopt_norm = fopt * -1
-    else:
-        fopt_norm = fopt.copy()
-    min_opt = fopt_norm.min()
-    delta_opt = fopt_norm.max() - min_opt
-    fopt_norm = (fopt_norm - min_opt)/delta_opt
-    fopt_nz = fopt_norm.copy()
-    if fmean is not None:
-        fopt_nz[fmean == 0] = 0
-    return fopt_nz
-
-min_mean = fmean_t1lab.min()
-delta_mean = fmean_t1lab.max() - min_mean
-fmean_t1lab_norm = (fmean_t1lab - min_mean)/(fmean_t1lab.max() - min_mean)
-
-
-
-# Normalize fopt_t2lab and fmean_t2lab
-fopt_t2lab_norm = fopt_t2lab * -1 # flip opt
-min_opt = fopt_t2lab_norm.min()
-delta_opt = fopt_t2lab_norm.max() - min_opt
-fopt_t2lab_norm = (fopt_t2lab_norm - min_opt)/(fopt_t2lab_norm.max()-min_opt)
-fopt_t2lab_norm[fmean_t2lab == 0] = 0# Set the value of empty iso-sets to zero
-fopt_t2lab_nz = fopt_t2lab
-fopt_t2lab_nz[fmean_t2lab == 0] = 0
-min_mean = fmean_t2lab.min()
-delta_mean = fmean_t2lab.max() - min_mean
-fmean_t2lab_norm = (fmean_t2lab - min_mean)/(fmean_t2lab.max() - min_mean)
-
-t2lab_fig = plt.figure()
-ax = t2lab_fig.add_subplot(1,2,1)
-compare_transfers(ax, fmean_t2lab, fopt_t2lab_nz, "Iso-set mean", "Optimized", 2, 'T2', 'F[T2]')
-ax = t2lab_fig.add_subplot(1,2,2)
-compare_transfers(ax, fmean_t2lab_norm, fopt_t2lab_norm, "Iso-set mean (normalized to [0,1])", "Optimized (flipped & normalized to [0,1])", 1, 'T2', 'F[T2]')
-
-# Normalize fopt_t1lab and fmean_t1lab
-fopt_t1lab_norm = fopt_t1lab * -1 # flip opt
-min_opt = fopt_t1lab_norm.min()
-delta_opt = fopt_t1lab_norm.max() - min_opt
-fopt_t1lab_norm = (fopt_t1lab_norm - min_opt)/(fopt_t1lab_norm.max()-min_opt)
-fopt_t1lab_norm[fmean_t1lab == 0] = 0# Set the value of empty iso-sets to zero
-fopt_t1lab_nz = fopt_t1lab
-fopt_t1lab_nz[fmean_t1lab == 0] = 0
-min_mean = fmean_t1lab.min()
-delta_mean = fmean_t1lab.max() - min_mean
-fmean_t1lab_norm = (fmean_t1lab - min_mean)/(fmean_t1lab.max() - min_mean)
-
-t1lab_fig = plt.figure()
-ax = t1lab_fig.add_subplot(1,2,1)
-compare_transfers(ax, fmean_t1lab, fopt_t1lab_nz, "Iso-set mean", "Optimized", 2, 'T1', 'F[T1]')
-ax = t1lab_fig.add_subplot(1,2,2)
-compare_transfers(ax, fmean_t1lab_norm, fopt_t1lab_norm, "Iso-set mean (normalized to [0,1])", "Optimized (flipped & normalized to [0,1])", 1, 'T1', 'F[T1]')
-
-
-
-
-
-
-# Check transfer functions with different window sizes
-opt_list_t1lab = {}
-diff_t1lab = {}
-opt_list_t2lab = {}
-diff_t2lab = {}
-max_size = 9
-for s in range(2,max_size+1):
-    #t1lab
-    fname = 'fopt_t1lab_'+str(s)+'.npy'
-    fopt = np.load(fname)
-    opt_list_t1lab[s] = fopt
-    diff_t1lab[s] = np.sqrt((np.abs(fmean_t1lab - fopt)**2).sum())
-
-    fname = 'fopt_t2lab_'+str(s)+'.npy'
-    fopt = np.load(fname)
-    opt_list_t2lab[s] = fopt
-    diff_t2lab[s] = np.sqrt((np.abs(fmean_t2lab - fopt)**2).sum())
-
-# Plot RMSE graphs
-rmse_t1lab = [diff_t1lab[i] for i in range(2, max_size+1)]
-rmse_t2lab = [diff_t2lab[i] for i in range(2, max_size+1)]
-fig = plt.figure()
-ax = fig.add_subplot(1,1,1)
-ax.set_xticks(range(2,max_size+1))
-ax.set_xlabel('Window size', fontsize=24)
-ax.set_ylabel('RMSE', fontsize=24)
-line, = plot(range(2, max_size+1), rmse_t1lab)
-line.set_label('T2 as a function of T1')
-line, = plot(range(2, max_size+1), rmse_t2lab)
-line.set_label('T1 as a function of T2')
-ax.legend(loc=1, fontsize=24)
-plt.grid()
-
-
-
-fig = plt.figure()
-ax = fig.add_subplot(1,2,1)
-compare_transfers(ax, fmean_t1lab, opt_list_t1lab[4], "Iso-set mean", "Optimized", 1, 'T1', 'F[T1]')
-ax = fig.add_subplot(1,2,2)
-compare_transfers(ax, fmean_t2lab, opt_list_t2lab[4], "Iso-set mean", "Optimized", 1, 'T2', 'F[T2]')
-
-
-# Apply the transfer
-t2_lab = t2.astype(np.int32)
-means_t2t1, vars_t2t1 = get_mean_transfer(t2_lab, t1)
-ss_t1 = means_t2t1[t2_lab]
-
-t1_lab = t1.astype(np.int32)
-means_t1t2, vars_t1t2 = get_mean_transfer(t1_lab, t2)
-ss_t2 = means_t1t2[t1_lab]
-
-
-
-# Compute residuals of locally affine fit on T1 and T2
-radius = 4
-residuals_nb = ccr.compute_cc_residuals(t1, t2, radius, 1)
-residuals_nb = np.array(residuals_nb)
-
-# Compute residuals of locally affine fit on F(T1) and T2
-radius = 4
-residuals_t2 = ccr.compute_cc_residuals(ss_t2, t2, radius, 1)
-residuals_t2 = np.array(residuals_t2)
-
-# Compute residuals of locally affine fit on T1 and F[T2]
-radius = 4
-residuals_t1 = ccr.compute_cc_residuals(t1, ss_t1, radius, 1)
-residuals_t1 = np.array(residuals_t1)
-
-
-# Prepare interactive graphs
-global_figure = None
-global_map = None
-sel_x = None
-sel_y = None
-
 def draw_affine_fit(ax, x, x_name, y, y_name):
     # Affine fit
     alpha, beta, x_fit, y_fit, ref, mse = ccr.affine_fit(x, y, 0)
@@ -362,6 +141,8 @@ def draw_rect(event):
     residuals = global_map['residuals']
     slice_type = global_map['slice_type']
     slice_index = global_map['slice_index']
+    vmin = global_map['vmin']
+    vmax = global_map['vmax']
     if slice_index is None:
         slice_index = img0.shape[slice_type]//2
 
@@ -370,13 +151,13 @@ def draw_rect(event):
     x, y, z = None, None, None
     ax = global_figure.add_subplot(1,3,1)
     if slice_type==0:
-        ax.imshow(residuals[slice_index,:,:].T, origin='lower')
+        ax.imshow(residuals[slice_index,:,:].T, origin='lower', vmin=vmin, vmax=vmax)
         x, y, z = slice_index, px, py
     elif slice_type==1:
-        ax.imshow(residuals[:,slice_index,:].T, origin='lower')
+        ax.imshow(residuals[:,slice_index,:].T, origin='lower', vmin=vmin, vmax=vmax)
         x, y, z = px, slice_index, py
     else:
-        ax.imshow(residuals[:,:,slice_index].T, origin='lower')
+        ax.imshow(residuals[:,:,slice_index].T, origin='lower', vmin=vmin, vmax=vmax)
         x, y, z = px, py, slice_index
     print("V[%d,%d,%d]=%f\n"%(x,y,z,residuals[x,y,z]))
     minx, maxx = max(0, x-side//2), min(shape[0]-1, x+side//2)
@@ -399,22 +180,415 @@ def draw_rect(event):
     ax.add_artist(R)
     draw()
 
-def run_interactive(img0, img0_name, img1, img1_name, residuals, slice_type=1, slice_index=None):
+def run_interactive(img0, img0_name, img1, img1_name, residuals,
+                    slice_type=1, slice_index=None, vmin=None, vmax=None):
     global global_figure
     global global_map
 
+    if vmin is None:
+        vmin = residuals.min()
+    if vmax is None:
+        vmax = residuals.max()
+
     global_figure = figure()
     ax = global_figure.add_subplot(1,3,1)
-    ax.imshow(residuals[:,residuals.shape[1]//2,:].transpose(), origin='lower')
+
+    if slice_type==0:
+        if slice_index is None:
+            slice_index =  residuals.shape[0]//2
+        mappable = ax.imshow(residuals[slice_index,:,:].transpose(), origin='lower',
+                             vmin=vmin, vmax=vmax)
+    elif slice_type==1:
+        if slice_index is None:
+            slice_index =  residuals.shape[1]//2
+        mappable = ax.imshow(residuals[:,residuals.shape[1]//2,:].transpose(), origin='lower',
+                             vmin=vmin, vmax=vmax)
+    else:
+        if slice_index is None:
+            slice_index =  residuals.shape[2]//2
+        mappable = ax.imshow(residuals[:,:,slice_index].transpose(), origin='lower',
+                             vmin=vmin, vmax=vmax)
+
+    global_figure.colorbar(mappable)
     global_map = {'img0':img0,
                   'img0_name':img0_name,
                   'img1':img1,
                   'img1_name':img1_name,
                   'residuals':residuals,
                   'slice_type':slice_type,
-                  'slice_index':slice_index}
+                  'slice_index':slice_index,
+                  'vmin':vmin,
+                  'vmax':vmax}
     global_figure.canvas.mpl_connect('button_press_event', draw_rect)
 
-run_interactive(t1, "T1", t2, "T2", residuals_nb, 1, None)
-run_interactive(t1, "T1", ss_t1, "F[T2]", residuals_t1, 1, None)
-run_interactive(t2, "T2", ss_t2, "F[T1]", residuals_t2, 2, None)
+
+
+def demo_t1_t2():
+    # Load data
+    t1_name = t1_name = get_brainweb("t1", "strip")
+    t1_nib = nib.load(t1_name)
+    t1 = t1_nib.get_data().squeeze()
+    t1_lab = t1.astype(np.int32)
+    t1 = t1.astype(np.float64)
+    #t1 = (t1.astype(np.float64) - t1.min())/(t1.max()-t1.min())
+
+
+    t2_name = t2_name = get_brainweb("t2", "strip")
+    t2_nib = nib.load(t2_name)
+    t2 = t2_nib.get_data().squeeze()
+    t2_lab = t2.astype(np.int32)
+    t2 = t2.astype(np.float64)
+    #t2 = (t2.astype(np.float64) - t2.min())/(t2.max()-t2.min())
+
+
+
+    # Prepare interactive graphs
+    global_figure = None
+    global_map = None
+    sel_x = None
+    sel_y = None
+
+
+    # Compute residuals of locally affine fit on T1 and T2
+    radius = 4
+    residuals_nb = ccr.compute_cc_residuals(t1, t2, radius, 1)
+    residuals_nb = np.array(residuals_nb)
+
+    # Apply the transfer
+    means_t2t1, vars_t2t1 = get_mean_transfer(t2_lab, t1)
+    ss_t1 = means_t2t1[t2_lab]
+
+    means_t1t2, vars_t1t2 = get_mean_transfer(t1_lab, t2)
+    ss_t2 = means_t1t2[t1_lab]
+
+    # Compute residuals of locally affine fit on T1 and F[T2]
+    radius = 4
+    residuals_t1 = ccr.compute_cc_residuals(t1, ss_t1, radius, 1)
+    residuals_t1 = np.array(residuals_t1)
+
+    # Compute residuals of locally affine fit on F(T1) and T2
+    radius = 4
+    residuals_t2 = ccr.compute_cc_residuals(ss_t2, t2, radius, 1)
+    residuals_t2 = np.array(residuals_t2)
+
+    slice_type = 1
+    slice_index = residuals_nb.shape[slice_type]//2
+    if slice_type == 0:
+        max_val = np.max([residuals_nb[slice_index,:,:].max(), residuals_t1[slice_index,:,:].max(), residuals_t2[slice_index,:,:].max()])
+    elif slice_type == 1:
+        max_val = np.max([residuals_nb[:,slice_index,:].max(), residuals_t1[:,slice_index,:].max(), residuals_t2[:,slice_index,:].max()])
+    else:
+        max_val = np.max([residuals_nb[:,:,slice_index].max(), residuals_t1[:,:,slice_index].max(), residuals_t2[:,:,slice_index].max()])
+
+    run_interactive(t1, "T1", t2, "T2", residuals_nb, slice_type, slice_index, vmin=0, vmax=max_val)
+    run_interactive(t1, "T1", ss_t1, "F[T2]", residuals_t1, slice_type, slice_index, vmin=0, vmax=max_val)
+    run_interactive(t2, "T2", ss_t2, "F[T1]", residuals_t2, slice_type, slice_index, vmin=0, vmax=max_val)
+
+
+    
+def demo_near_dwi(idx=-1):
+    # Load data
+    dwi_fname = 'usmcuw_dipy.nii.gz'
+    dwi_nib = nib.load(dwi_fname)
+    dwi = dwi_nib.get_data().squeeze()
+    B_name = 'B_dipy.txt'
+    B = np.loadtxt(B_name)
+    n = B.shape[0]
+
+    pp = []
+    for i in range(1,n):
+        for j in range(i+1, n):
+            p = np.abs(B[i,:3].dot(B[j,:3]))
+            pp.append((p, (i,j)))
+    pp.sort()
+    sel = pp[idx][1]
+
+    t1 = dwi[...,sel[0]]
+    t1_lab = t1.astype(np.int32)
+    t1 = t1.astype(np.float64)
+    t1 = (t1.astype(np.float64) - t1.min())/(t1.max()-t1.min())
+
+
+    t2 = dwi[...,sel[1]]
+    t2_lab = t2.astype(np.int32)
+    t2 = t2.astype(np.float64)
+    t2 = (t2.astype(np.float64) - t2.min())/(t2.max()-t2.min())
+
+
+
+    # Prepare interactive graphs
+    global_figure = None
+    global_map = None
+    sel_x = None
+    sel_y = None
+
+
+    # Compute residuals of locally affine fit on T1 and T2
+    radius = 4
+    residuals_nb = ccr.compute_cc_residuals(t1, t2, radius, 1)
+    residuals_nb = np.array(residuals_nb)
+
+    # Apply the transfer
+    means_t2t1, vars_t2t1 = get_mean_transfer(t2_lab, t1)
+    ss_t1 = means_t2t1[t2_lab]
+
+    means_t1t2, vars_t1t2 = get_mean_transfer(t1_lab, t2)
+    ss_t2 = means_t1t2[t1_lab]
+
+    # Compute residuals of locally affine fit on T1 and F[T2]
+    radius = 4
+    residuals_t1 = ccr.compute_cc_residuals(t1, ss_t1, radius, 1)
+    residuals_t1 = np.array(residuals_t1)
+
+    # Compute residuals of locally affine fit on F(T1) and T2
+    radius = 4
+    residuals_t2 = ccr.compute_cc_residuals(ss_t2, t2, radius, 1)
+    residuals_t2 = np.array(residuals_t2)
+
+    slice_type = 2
+    slice_index = residuals_nb.shape[slice_type]//2
+    if slice_type == 0:
+        max_val = np.max([residuals_nb[slice_index,:,:].max(), residuals_t1[slice_index,:,:].max(), residuals_t2[slice_index,:,:].max()])
+    elif slice_type == 1:
+        max_val = np.max([residuals_nb[:,slice_index,:].max(), residuals_t1[:,slice_index,:].max(), residuals_t2[:,slice_index,:].max()])
+    else:
+        max_val = np.max([residuals_nb[:,:,slice_index].max(), residuals_t1[:,:,slice_index].max(), residuals_t2[:,:,slice_index].max()])
+
+    run_interactive(t1, "T1", t2, "T2", residuals_nb, slice_type, slice_index, vmin=0, vmax=max_val)
+    run_interactive(t1, "T1", ss_t1, "F[T2]", residuals_t1, slice_type, slice_index, vmin=0, vmax=max_val)
+    run_interactive(t2, "T2", ss_t2, "F[T1]", residuals_t2, slice_type, slice_index, vmin=0, vmax=max_val)
+    
+    
+    
+    
+dwi_fname = 'usmcuw_dipy.nii.gz'
+dwi_nib = nib.load(dwi_fname)
+dwi = dwi_nib.get_data().squeeze()
+B_name = 'B_dipy.txt'
+B = np.loadtxt(B_name)
+n = B.shape[0]
+
+pp = []
+for i in range(1,n):
+    for j in range(i+1, n):
+        p = np.abs(B[i,:3].dot(B[j,:3]))
+        pp.append((p, (i,j)))
+pp.sort()
+far = pp[0][1]
+near = pp[-1][1]
+rt.overlay_slices(dwi[...,near[0]], dwi[...,near[1]], slice_type=0)
+rt.overlay_slices(dwi[...,near[0]], dwi[...,near[1]], slice_type=1)
+rt.overlay_slices(dwi[...,near[0]], dwi[...,near[1]], slice_type=2)
+
+
+rt.overlay_slices(dwi[...,far[0]], dwi[...,far[1]], slice_type=0)
+rt.overlay_slices(dwi[...,far[0]], dwi[...,far[1]], slice_type=1)
+rt.overlay_slices(dwi[...,far[0]], dwi[...,far[1]], slice_type=2)
+
+
+sel = 1
+rt.overlay_slices(dwi[...,pp[sel][1][0]], dwi[...,pp[sel][1][1]])
+
+
+
+
+
+
+
+
+
+def optimal_vs_average_experiment():
+    # Compute transfer for optimal local-linearity
+    radius = 5
+    init_from_mean = True
+    nlabels_t1 = 1 + np.max(t1_lab)
+    nlabels_t2 = 1 + np.max(t2_lab)
+
+    means_t1t2, vars_t1t2 = get_mean_transfer(t1_lab, t2)
+    fmean_t1lab = np.array(means_t1t2)
+
+    means_t2t1, vars_t2t1 = get_mean_transfer(t2_lab, t1)
+    fmean_t2lab = np.array(means_t2t1)
+
+    def value_and_gradient_t1lab(x, *args):
+        val, grad = ccr.compute_transfer_value_and_gradient(x, t1_lab, nlabels_t1, t2, radius)
+        print("Energy:%f"%(val,))
+        return val, np.array(grad)
+
+    def value_and_gradient_t2lab(x, *args):
+        val, grad = ccr.compute_transfer_value_and_gradient(x, t2_lab, nlabels_t2, t1, radius)
+        print("Energy:%f"%(val,))
+        return val, np.array(grad)
+
+    options = {'maxiter': 20}
+    if init_from_mean:
+        f0 = fmean_t1lab
+    else:
+        f0 = np.random.uniform(0,1,len(fmean_t1lab))
+
+    ofname = 'fopt_t1lab_'+str(radius)+'.npy'
+    fopt_t1lab = None
+    if os.path.isfile(ofname):
+        fopt_t1lab = np.load(ofname)
+    else:
+        opt_t1lab = Optimizer(value_and_gradient_t1lab, f0, "BFGS", jac = True, options=options)
+        fopt_t1lab = opt_t1lab.xopt
+        np.save(ofname, fopt_t1lab)
+
+    options = {'maxiter': 20}
+    if init_from_mean:
+        f0 = fmean_t2lab
+    else:
+        f0 = np.random.uniform(0,1,len(fmean_t2lab))
+
+    ofname = 'fopt_t2lab_'+str(radius)+'.npy'
+    fopt_t2lab = None
+    if os.path.isfile(ofname):
+        fopt_t2lab = np.load(ofname)
+    else:
+        opt_t2lab = Optimizer(value_and_gradient_t2lab, f0, "BFGS", jac = True, options=options)
+        fopt_t2lab = opt_t2lab.xopt
+        np.save(ofname, fopt_t2lab)
+
+
+    # Compare mean vs. optimal transfers : t2lab
+    markers = ['o','D','s','^']
+    linestyles = ['-', '--', '--', '--']
+    def compare_transfers(ax, fmean, fopt, fmean_legend, fopt_legend, legend_location, xlabel='', ylabel=''):
+        line, = ax.plot(range(0, len(fmean)), fmean, linestyle=linestyles[1])
+        line.set_label(fmean_legend)
+        line, = ax.plot(range(0, len(fmean)), fopt, linestyle=linestyles[0])
+        line.set_label(fopt_legend)
+        ax.legend(loc=legend_location, fontsize=16)
+        plt.grid()
+        plt.xlim(0,len(fmean) - 1)
+        plt.xlabel(xlabel, fontsize=18)
+        plt.ylabel(ylabel, fontsize=18)
+
+    def normalize(fopt, fmean=None, flip=False):
+        if flip:
+            fopt_norm = fopt * -1
+        else:
+            fopt_norm = fopt.copy()
+        min_opt = fopt_norm.min()
+        delta_opt = fopt_norm.max() - min_opt
+        fopt_norm = (fopt_norm - min_opt)/delta_opt
+        fopt_nz = fopt_norm.copy()
+        if fmean is not None:
+            fopt_nz[fmean == 0] = 0
+        return fopt_nz
+
+    min_mean = fmean_t1lab.min()
+    delta_mean = fmean_t1lab.max() - min_mean
+    fmean_t1lab_norm = (fmean_t1lab - min_mean)/(fmean_t1lab.max() - min_mean)
+
+
+
+    # Normalize fopt_t2lab and fmean_t2lab
+    fopt_t2lab_norm = fopt_t2lab * -1 # flip opt
+    min_opt = fopt_t2lab_norm.min()
+    delta_opt = fopt_t2lab_norm.max() - min_opt
+    fopt_t2lab_norm = (fopt_t2lab_norm - min_opt)/(fopt_t2lab_norm.max()-min_opt)
+    fopt_t2lab_norm[fmean_t2lab == 0] = 0# Set the value of empty iso-sets to zero
+    fopt_t2lab_nz = fopt_t2lab
+    fopt_t2lab_nz[fmean_t2lab == 0] = 0
+    min_mean = fmean_t2lab.min()
+    delta_mean = fmean_t2lab.max() - min_mean
+    fmean_t2lab_norm = (fmean_t2lab - min_mean)/(fmean_t2lab.max() - min_mean)
+
+    t2lab_fig = plt.figure()
+    ax = t2lab_fig.add_subplot(1,2,1)
+    compare_transfers(ax, fmean_t2lab, fopt_t2lab_nz, "Iso-set mean", "Optimized", 2, 'T2', 'F[T2]')
+    ax = t2lab_fig.add_subplot(1,2,2)
+    compare_transfers(ax, fmean_t2lab_norm, fopt_t2lab_norm, "Iso-set mean (normalized to [0,1])", "Optimized (flipped & normalized to [0,1])", 1, 'T2', 'F[T2]')
+
+    # Normalize fopt_t1lab and fmean_t1lab
+    fopt_t1lab_norm = fopt_t1lab * -1 # flip opt
+    min_opt = fopt_t1lab_norm.min()
+    delta_opt = fopt_t1lab_norm.max() - min_opt
+    fopt_t1lab_norm = (fopt_t1lab_norm - min_opt)/(fopt_t1lab_norm.max()-min_opt)
+    fopt_t1lab_norm[fmean_t1lab == 0] = 0# Set the value of empty iso-sets to zero
+    fopt_t1lab_nz = fopt_t1lab
+    fopt_t1lab_nz[fmean_t1lab == 0] = 0
+    min_mean = fmean_t1lab.min()
+    delta_mean = fmean_t1lab.max() - min_mean
+    fmean_t1lab_norm = (fmean_t1lab - min_mean)/(fmean_t1lab.max() - min_mean)
+
+    t1lab_fig = plt.figure()
+    ax = t1lab_fig.add_subplot(1,2,1)
+    compare_transfers(ax, fmean_t1lab, fopt_t1lab_nz, "Iso-set mean", "Optimized", 2, 'T1', 'F[T1]')
+    ax = t1lab_fig.add_subplot(1,2,2)
+    compare_transfers(ax, fmean_t1lab_norm, fopt_t1lab_norm, "Iso-set mean (normalized to [0,1])", "Optimized (flipped & normalized to [0,1])", 1, 'T1', 'F[T1]')
+
+
+
+
+
+def optimal_transfer_different_window_sizes():
+    # Check transfer functions with different window sizes
+    opt_list_t1lab = {}
+    diff_t1lab = {}
+    opt_list_t2lab = {}
+    diff_t2lab = {}
+    max_size = 9
+    for s in range(2,max_size+1):
+        #t1lab
+        fname = 'fopt_t1lab_'+str(s)+'.npy'
+        fopt = np.load(fname)
+        opt_list_t1lab[s] = fopt
+        diff_t1lab[s] = np.sqrt((np.abs(fmean_t1lab - fopt)**2).sum())
+
+        fname = 'fopt_t2lab_'+str(s)+'.npy'
+        fopt = np.load(fname)
+        opt_list_t2lab[s] = fopt
+        diff_t2lab[s] = np.sqrt((np.abs(fmean_t2lab - fopt)**2).sum())
+
+    # Plot RMSE graphs
+    rmse_t1lab = [diff_t1lab[i] for i in range(2, max_size+1)]
+    rmse_t2lab = [diff_t2lab[i] for i in range(2, max_size+1)]
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    ax.set_xticks(range(2,max_size+1))
+    ax.set_xlabel('Window size', fontsize=24)
+    ax.set_ylabel('RMSE', fontsize=24)
+    line, = plot(range(2, max_size+1), rmse_t1lab)
+    line.set_label('T2 as a function of T1')
+    line, = plot(range(2, max_size+1), rmse_t2lab)
+    line.set_label('T1 as a function of T2')
+    ax.legend(loc=1, fontsize=24)
+    plt.grid()
+
+
+def plot_average_and_optimized_transfers():
+    fig = plt.figure()
+    ax = fig.add_subplot(1,2,1)
+    compare_transfers(ax, fmean_t1lab, opt_list_t1lab[4], "Iso-set mean", "Optimized", 1, 'T1', 'F[T1]')
+    ax = fig.add_subplot(1,2,2)
+    compare_transfers(ax, fmean_t2lab, opt_list_t2lab[4], "Iso-set mean", "Optimized", 1, 'T2', 'F[T2]')
+
+
+    # Apply the transfer
+    t2_lab = t2.astype(np.int32)
+    means_t2t1, vars_t2t1 = get_mean_transfer(t2_lab, t1)
+    ss_t1 = means_t2t1[t2_lab]
+
+    t1_lab = t1.astype(np.int32)
+    means_t1t2, vars_t1t2 = get_mean_transfer(t1_lab, t2)
+    ss_t2 = means_t1t2[t1_lab]
+
+
+
+    # Compute residuals of locally affine fit on T1 and T2
+    radius = 4
+    residuals_nb = ccr.compute_cc_residuals(t1, t2, radius, 1)
+    residuals_nb = np.array(residuals_nb)
+
+    # Compute residuals of locally affine fit on F(T1) and T2
+    radius = 4
+    residuals_t2 = ccr.compute_cc_residuals(ss_t2, t2, radius, 1)
+    residuals_t2 = np.array(residuals_t2)
+
+    # Compute residuals of locally affine fit on T1 and F[T2]
+    radius = 4
+    residuals_t1 = ccr.compute_cc_residuals(t1, ss_t1, radius, 1)
+    residuals_t1 = np.array(residuals_t1)
