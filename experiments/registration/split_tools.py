@@ -352,7 +352,7 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
         dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
         for name in dirNames:
             os.chdir('./'+name)
-            subprocess.call('qsub job*.sh -d .', shell=True)
+            subprocess.call('qsub job*.sh -d . -q batch', shell=True)
             os.chdir('./..')
         sys.exit(0)
     ############################Collect##################################
