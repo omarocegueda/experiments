@@ -264,7 +264,6 @@ def register_3d(params):
         raise ValueError('Unknown metric: %s'%(metric_name,))
 
     #Initialize the optimizer
-    opt_tol = 1e-5
     opt_iter = [int(i) for i in params.iter.split(',')]
     transforms = [t for t in params.transforms.split(',')]
     ss_sigma_factor = float(params.ss_sigma_factor)
@@ -274,7 +273,6 @@ def register_3d(params):
     method = params.method
     affreg = AffineRegistration(metric=metric,
                                 level_iters=opt_iter,
-                                opt_tol=opt_tol,
                                 sigmas=sigmas,
                                 factors=factors,
                                 method=method,
@@ -306,7 +304,7 @@ def register_3d(params):
         print('Optimizing: %s'%(transform_name,))
         x0 = None
         sol = affreg.optimize(static, moving, transform, x0,
-                              static_affine, moving_affine, prealign = prealign)
+                              static_affine, moving_affine, starting_affine = prealign)
         prealign = sol.copy()
 
     save_registration_results(sol, params)
