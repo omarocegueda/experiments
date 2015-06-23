@@ -7,7 +7,7 @@ import sys
 import os
 import numpy as np
 import nibabel as nib
-from dipy.align.imaffine import MattesMIMetric, AffineRegistration, aff_warp
+from dipy.align.imaffine import MattesMIMetric, AffineRegistration, transform_image
 from dipy.align.transforms import regtransforms
 import dipy.align.imwarp as imwarp
 import dipy.align.metrics as metrics
@@ -203,7 +203,7 @@ def save_registration_results(affine, params):
     static_affine = static_affine[:(dim + 1), :(dim + 1)]
     moving_affine = moving_affine[:(dim + 1), :(dim + 1)]
 
-    warped = aff_warp(static, static_affine, moving, moving_affine, affine, False)
+    warped = transform_image(static, static_affine, moving, moving_affine, affine, False)
 
     img_affine = np.eye(4,4)
     img_affine[:(dim + 1), :(dim + 1)] = static_affine[...]
@@ -219,7 +219,7 @@ def save_registration_results(affine, params):
         to_warp = to_warp_nib.get_data().squeeze().astype(np.int32)
         base_warp = getBaseFileName(name)
         print(static.dtype, static_affine.dtype, to_warp.dtype, img_affine.dtype, affine.dtype)
-        warped = aff_warp(static, static_affine, to_warp, img_affine, affine, True)
+        warped = transform_image(static, static_affine, to_warp, img_affine, affine, True)
         img_affine = np.eye(4,4)
         img_affine[:(dim + 1), :(dim + 1)] = static_affine[...]
         img_warped = nib.Nifti1Image(warped, img_affine)
