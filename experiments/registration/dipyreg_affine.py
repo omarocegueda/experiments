@@ -256,6 +256,10 @@ def register_3d(params):
     if metric_name == 'MI':
         nbins=int(metric_params_list[0])
         metric = MattesMIMetric(nbins)
+    elif metric_name == 'LCC':
+        from dipy.align.imaffine import LocalCCMetric
+        radius=int(metric_params_list[0])
+        metric = LocalCCMetric(radius)
     else:
         raise ValueError('Unknown metric: %s'%(metric_name,))
 
