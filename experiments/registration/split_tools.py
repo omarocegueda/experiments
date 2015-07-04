@@ -7,6 +7,7 @@ import errno
 from rcommon import decompose_path
 import nibabel as nib
 import numpy as np
+from dipy.align.vector_fields import warp_3d_affine
 
 def create_ref_correction_schedule(n, ref):
     regs = []
@@ -582,10 +583,22 @@ def split_dwi(argv, required_files):
             mname = 'dwi_%03d_dwi_%03dAffine.txt' % (j, i)
             matrices[(i,j)] = np.loadtxt(mname)
             print('Loaded matrix %s' % mname)
+        corrected = np.empty_like(dwi)
         for i in range(n):
             affine = execute_path(paths[i], matrices)
+            # Warp image i
+            M = np.linalg.inv(dwi_nib.get_affine())
+            M = M.dot(affine)
+            M = M.dot(dwi_nib.get_affine())
+
+            in_vol = dwi[...,i].astype(np.float32)
+            out_shape = np.array(dwi[...,i].shape, dtype=np.int32)
+            warped = warp_3d_affine(in_vol, out_shape, M)
+            corrected[...,i] = warped[...]
             affname = os.path.join('mst', 'dwi_%03d_dwi_%03dAffine.txt' % (i, centroid))
             np.savetxt(affname, affine)
+        corrected_nib = nib.Nifti1Image(corrected, dwi_nib.get_affine())
+        corrected_nib.to_filename('corrected.nii.gz')
         sys.exit(0)
     ############################Unknown##################################
     print 'Unknown option "'+argv[1]+'". The available options are "(c)"lean, "(s)"plit, s"(u)"bmit, c"(o)"llect.'
