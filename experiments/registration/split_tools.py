@@ -74,6 +74,25 @@ def create_mst_correction_schedule(bvecs):
 
     return regs, centroid, paths
 
+def execute_path(path):
+    n = len(path)
+    affine = np.eye(4)
+    for i in range(1,n):
+        static = path[i-1]
+        moving = path[i]
+        fname = 'align_'+str(static)+'_'+str(moving)+'.npy'
+        if os.path.isfile(fname):
+            new = np.load(fname)
+        else:
+            fname = 'align_'+str(moving)+'_'+str(static)+'.npy'
+            if os.path.isfile(fname):
+                new = np.load(fname)
+                new = np.linalg.inv(new)
+            else:
+                raise ValueError("Path broken")
+        affine = affine.dot(new)
+    return affine
+
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -519,14 +538,39 @@ def split_dwi(argv, required_files):
             os.chdir('./..')
         sys.exit(0)
     if argv[1]=='o':
+        if argc < 3:
+            print('Please specify the reference volume or schedule type')
+            sys.exit(0)
+        try:
+            reference = int(argv[2])
+            if reference < 0 or reference >= n:
+                print('Invalid reference volume: %d' % (reference))
+                sys.exit(0)
+            regs, centroid, paths = create_ref_correction_schedule(n, ref)
+            print('Registration schedule (star) with centroid %d.' % (ref,))
+        except:
+            if argv[2] != 'MST':
+                print('Undefined schedule: '+ argv[2])
+                sys.exit(0)
+            if argc < 4:
+                print('Please provide the (n x 4) B-matrix file name.')
+                sys.exit(0)
+            Bfname = argv[3]
+            B = np.loadtxt(Bfname)
+            if B.shape != (n,4):
+                print('Invalid B-matrix. Shape is (%d, %d). Expected: (%d, %d)' % (B.shape[0], B.shape[1], n, 4))
+                sys.exit(0)
+            regs, centroid, paths = create_mst_correction_schedule(B[:,:3])
+            print('Registration schedule (mst) with centroid %d.' % (centroid,))
+
         mkdir_p('results')
         dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
         matrices = {}
         for name in dirNames:
-            subprocess.call('mv '+os.path.join(name,'*.txt')+' results', shell=True)
-            subprocess.call('mv '+os.path.join(name,'*.e*')+' results', shell=True)
-            subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
-            i, j = [int(s) for s in name.split('_')]
+            #subprocess.call('mv '+os.path.join(name,'*.txt')+' results', shell=True)
+            #subprocess.call('mv '+os.path.join(name,'*.e*')+' results', shell=True)
+            #subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
+            j, i = [int(s) for s in name.split('_')]
             mname = os.path.join(name, 'dwi_%03d_dwi%03dAffine.txt' % (j, i))
             matrices[(i,j)] = np.loadtxt(mname)
             print('Loaded matrix %s' % mname)
