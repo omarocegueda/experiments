@@ -13,6 +13,7 @@ import dipy.viz.regtools as rt
 import experiments.registration.regviz as rv
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import experiments.registration.gproc as gp
 
 from numpy.testing import (assert_equal,
                            assert_almost_equal,
@@ -32,7 +33,7 @@ def draw_dwi_gp(ax, points, dwi_name):
     # Plot required info
     x_name = ''
     y_name = ''
-    
+
     ax.scatter(points[:,0].copy(), points[:,1].copy(), points[:,2].copy(), c='r')
     ax.scatter(points[:,0].copy(), points[:,1].copy(), points[:,2].copy(), c='r')
     #--
@@ -82,12 +83,38 @@ def draw_rect_dwi(event):
     minz, maxz = max(0, z-side//2), min(shape[2]-1, z+side//2)
     sel_signal=dwi[x,y,z,:].copy()
     print(sel_signal)
+    # Duplicate the points in the opposite direction
     points = np.empty((bvecs.shape[0] * 2, 3), dtype=np.float64)
     points[:bvecs.shape[0],:] = diag(sel_signal).dot(bvecs)
     points[bvecs.shape[0]:,:] = diag(sel_signal).dot(bvecs)*-1
-    
-    ax = global_figure.add_subplot(1,2,2, projection='3d')
-    draw_dwi_gp(ax, points, dwi_name)
+
+    # Fit Gaussian process
+    mean_signal = sel_signal.mean()
+    f_in = sel_signal - mean_signal
+    x_in = bvecs.copy()
+    sigmasq_signal = f_in.var()
+    sigmasq_noise = 100.0 # We need to estimate this from the data
+    # Create sampling points
+    u = np.linspace(0, 2 * np.pi, 100)
+    v = np.linspace(0, np.pi, 100)
+    x = np.outer(np.cos(u), np.sin(v))
+    y = np.outer(np.sin(u), np.sin(v))
+    z = np.outer(np.ones(np.size(u)), np.cos(v))
+    x_out = np.array([x.reshape(-1),y.reshape(-1),z.reshape(-1)]).T
+    # Get the conditional mean and covariance matrix
+    mean_out, S_out = gp.spherical_poly_conditional(x_in, f_in, x_out, sigmasq_signal, sigmasq_noise)
+    mean_out = np.array(mean_out)
+    # Get the predicted signal at the new sampling points
+    predicted = mean_out.reshape(x.shape)
+    predicted += mean_signal
+    x *= predicted
+    y *= predicted
+    z *= predicted
+    ax = global_figure.add_subplot(122, projection='3d')
+    ax.plot_surface(x, y, z,  rstride=4, cstride=4, color='b', alpha=0.2, shade=True)
+    points = diag(sel_signal).dot(x_in)
+    ax.scatter(points[:,0].copy(), points[:,1].copy(), points[:,2].copy(), c='r', s=40)
+    ax.scatter(-1*points[:,0].copy(), -1*points[:,1].copy(), -1*points[:,2].copy(), c='r', s=40)
 
     ax = global_figure.get_axes()[0]
     R = Rectangle((px-side//2,py-side//2), side, side, facecolor='none', linewidth=3, edgecolor='#DD0000')
@@ -146,19 +173,30 @@ def run_interactive_dwi(dwi, bvecs, dwi_name, residuals,
                   'vmin':vmin,
                   'vmax':vmax}
     global_figure.canvas.mpl_connect('button_press_event', draw_rect_dwi)
-    
-    
+
+
 def demo_dwi_roi(idx=-1):
     dwi_fname = 'Diffusion.nii.gz'
+    #dwi_fname = 'NoArtifacts.nii.gz'
+    B_name = 'B.txt'
+    dataset_name = 'Challenge 2015'
+    #dataset_name = 'Ramon DWI'
+    #dwi_fname = 'Ramon_dwi.nii.gz'
+    #B_name = 'Ramon_dwi.bvecs'
+
     dwi_nib = nib.load(dwi_fname)
     dwi = dwi_nib.get_data().squeeze()
-    B_name = 'B.txt'
     B = np.loadtxt(B_name)
+
+    remove_first = True
+    if remove_first:
+        B = B[1:,...]
+        dwi = dwi[...,1:]
     bvecs = B[...,:3]
     n = B.shape[0]
+
     residuals = dwi[...,0].copy()
-    run_interactive_dwi(dwi, bvecs, 'Challenge 2015', residuals,
+    run_interactive_dwi(dwi, bvecs, dataset_name, residuals,
                         slice_type=1, slice_index=None, vmin=None, vmax=None)
-                        
-                        
-                        
+
+

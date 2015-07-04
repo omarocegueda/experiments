@@ -5,6 +5,74 @@ import shutil
 import subprocess
 import errno
 from rcommon import decompose_path
+import nibabel as nib
+
+def create_ref_correction_schedule(n, ref):
+    regs = []
+    centroid = ref
+    paths = {}
+    for i in range(n):
+        if i == ref:
+            continue
+        regs.append((ref, i))
+        paths[i] = [centroid, i]
+    return regs, centroid, paths
+
+
+def create_mst_correction_schedule(bvecs):
+    # Create registration schedule
+    n = bvecs.shape[0]
+    A = np.abs(bvecs.dot(bvecs.T))
+    in_set = np.zeros(n)
+    set_sim = A[0,:].copy()
+    in_set[0] = 1
+    set_sim[0] = -1
+    set_size = 1
+    regs = []
+    while(set_size < n):
+        sel = np.argmax(set_sim)
+        closest = -1
+        for i in range(n):
+            if in_set[i] == 0:
+                set_sim[i] = max([set_sim[i], A[i, sel]])
+            else:
+                if closest == -1 or A[sel, i] > A[sel, closest]:
+                    closest = i
+        in_set[sel] = 1
+        set_size += 1
+        set_sim[sel] = -1
+        regs.append((closest, sel))
+
+    # Find the centroid
+    A[...] = -1
+    for i in range(n):
+        A[i, i] = 0
+    for reg in regs:
+        A[reg[0], reg[1]] = 1
+        A[reg[1], reg[0]] = 1
+
+    for k in range(n):
+        for i in range(n):
+            for j in range(n):
+                if A[i, k] > 0 and A[k, j] > 0:
+                    opt = A[i, k] + A[k, j]
+                    if A[i, j] == -1 or opt < A[i, j]:
+                        A[i, j] = opt
+    steps = A.sum(1)
+    centroid = np.argmin(steps)
+
+    # Build correction schedule
+    paths = {}
+    paths[centroid] = [centroid]
+    while(len(paths)<n):
+        for reg in regs:
+            if reg[0] in paths and reg[1] not in paths:
+                paths[reg[1]] = paths[reg[0]] + [reg[1]]
+            elif reg[1] in paths and reg[0] not in paths:
+                paths[reg[0]] = paths[reg[1]] + [reg[0]]
+
+    return regs, centroid, paths
+
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -367,3 +435,95 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
         sys.exit(0)
     ############################Unknown##################################
     print 'Unknown option "'+argv[1]+'". The available options are "(c)"lean, "(s)"plit, s"(u)"bmit, c"(o)"llect.'
+
+
+def split_dwi(argv, required_files):
+    argc=len(argv)
+    #############################No parameters#############################
+    if not argv[1]:
+        print 'Please specify an action: c "(clean)", s "(split)", u "(submit)", o "(collect)"'
+        sys.exit(0)
+    #############################Clean#####################################
+    if argv[1]=='c':
+        if not os.path.isdir('results'):
+            cleanAnyway=query_yes_no("It seems like you have not collected the results yet. Clean anyway? (y/n)")
+            if not cleanAnyway:
+                sys.exit(0)
+        clean_working_dirs()
+        sys.exit(0)
+    #############################Split#####################################
+    if argv[1]=='s':
+        if argc < 3:
+            print('Please specify the dwi file name')
+            sys.exit(0)
+        dwi_fname = argv[2]
+        dwi_nib = nib.load(dwi_fname)
+        dwi = dwi_nib.get_data().squeeze()
+        n = dwi.shape[3]
+        print('Loaded %d volumes' % (n))
+        if argv < 4:
+            print('Please specify the reference volume')
+            sys.exit(0)
+        try:
+            reference = int(argv[3])
+            if reference < 0 or reference >= n:
+                print('Invalid reference volume: %d' % (reference))
+                sys.exit(0)
+            regs, centroid, paths = create_ref_correction_schedule(n, ref)
+            print('Registration schedule (star) with centroid %d.' % (ref,))
+        except:
+            if reference != 'MST':
+                print('Undefined schedule: '+ str(reference))
+                sys.exit(0)
+            if argc < 5:
+                print('Please provide the (n x 4) B-matrix file name.')
+                sys.exit(0)
+            Bfname = argv[4]
+            B = np.loadtxt(Bfname)
+            if B.shape != (n,4):
+                print('Invalid B-matrix. Shape is (%d, %d). Expected: (%d, %d)' % (B.shape[0], B.shape[1], n, 4))
+                sys.exit(0)
+            regs, centroid, paths = create_mst_correction_schedule(B[:,:3])
+            print('Registration schedule (mst) with centroid %d.' % (centroid,))
+
+        # Create one image per volume
+        mkdir_p('dwi_split')
+        for i in range(n):
+            fname = os.path.join('dwi_split', 'dwi_%03d.nii.gz' % (i,))
+            print('Extracting volume %s ...' % fname)
+            i_nib = nib.Nifti1Image(dwi[...,i], dwi_nib.get_affine())
+            i_nib.to_filename(fname)
+        # Create the registration jobs
+        for reg in regs:
+            i, j = reg
+            stri = '%02d' % (i,)
+            strj = '%02d' % (j,)
+            ifname = os.path.join('dwi_split', 'dwi_%03d.nii.gz' % (i,))
+            jfname = os.path.join('dwi_split', 'dwi_%03d.nii.gz' % (j,))
+            dir_name = strj + '_' + stri
+            target_path = os.path.join(dir_name, 'target')
+            reference_path = os.path.join(dir_name, 'reference')
+            mkdir_p(os.path.join(dir_name,'target'))
+            mkdir_p(os.path.join(dir_name,'reference'))
+            mkdir_p(os.path.join(dir_name,'warp'))
+            subprocess.call('ln %s %s' % (ifname, target_path), shell=True)
+            subprocess.call('ln %s %s' % (jfname, reference_path), shell=True)
+            for f in required_files:
+                subprocess.call('ln %s %s' % (f, dir_name), shell=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

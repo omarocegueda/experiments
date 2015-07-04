@@ -18,9 +18,7 @@ from numpy.testing import (assert_equal,
                            assert_array_almost_equal,
                            assert_raises)
 from dipy.align.imaffine import (align_centers_of_mass,
-                                 transform_image,
                                  MattesMIMetric,
-                                 LocalCCMetric,
                                  AffineRegistration)
 from dipy.align.transforms import regtransforms
 
@@ -34,7 +32,7 @@ def check_affine_fit(x, y, x_name="", y_name="", force_reference=-1):
         main_title = y_name+" as a function of "+x_name
         assert_almost_equal(x.dot(x)*alpha + x.sum()*beta - x.dot(y), 0)
         assert_almost_equal(x.sum()*alpha + len(y) * beta - y.sum(), 0)
-        figure()
+        figure(facecolor='white')
         scatter(x,y)
         plot(x_fit, y_fit)
         title(main_title)
@@ -44,7 +42,7 @@ def check_affine_fit(x, y, x_name="", y_name="", force_reference=-1):
         main_title = x_name+" as a function of "+y_name
         assert_almost_equal(y.dot(y)*alpha + y.sum()*beta - y.dot(x), 0)
         assert_almost_equal(y.sum()*alpha + len(x) * beta - x.sum(), 0)
-        figure()
+        figure(facecolor='white')
         scatter(y,x)
         plot(y_fit, x_fit)
         title(main_title)
@@ -64,7 +62,7 @@ def check_linear_fit(x, y, x_name="", y_name="", force_reference=-1):
     if ref == 0: # fit y as a function of x
         main_title = y_name+" as a function of "+x_name
         assert_almost_equal(x.dot(y) - alpha * x.dot(x), 0)
-        figure()
+        figure(facecolor='white')
         scatter(x,y)
         plot(x_fit, y_fit)
         title(main_title)
@@ -73,7 +71,7 @@ def check_linear_fit(x, y, x_name="", y_name="", force_reference=-1):
     else: # Fit x as a function of y
         main_title = x_name+" as a function of "+y_name
         assert_almost_equal(x.dot(y) - alpha * y.dot(y), 0)
-        figure()
+        figure(facecolor='white')
         scatter(y,x)
         plot(y_fit, x_fit)
         title(main_title)
@@ -118,12 +116,18 @@ def draw_affine_fit(ax, x, x_name, y, y_name):
     font = {'family' : 'serif',
             'color'  : 'black',
             'weight' : 'normal',
-            'size'   : 16,}
+            'size'   : 48,}
 
-    main_title = y_name+" as a function of "+x_name
+    #main_title = y_name+" as a function of "+x_name
+    main_title = ""
     ax.cla()
     ax.scatter(x, y)
     ax.plot(x_fit, y_fit)
+    for tick in ax.xaxis.get_major_ticks():
+        tick.label.set_fontsize(32)
+        tick.label.set_rotation('vertical')
+    for tick in ax.yaxis.get_major_ticks():
+        tick.label.set_fontsize(32)
     ax.grid(True)
     ax.set_title(main_title, fontdict=font)
     ax.set_xlabel(x_name, fontdict=font)
@@ -274,7 +278,7 @@ def run_interactive_pair(img0, img0_name, img1, img1_name, residuals,
     if vmax is None:
         vmax = residuals.max()
 
-    global_figure = figure()
+    global_figure = figure(facecolor='white')
     ax = global_figure.add_subplot(1,3,1)
 
     if slice_type==0:
@@ -325,7 +329,7 @@ def run_interactive_dwi(dwi, dwi_name, residuals,
     if vmax is None:
         vmax = residuals.max()
 
-    global_figure = figure()
+    global_figure = figure(facecolor='white')
     ax = global_figure.add_subplot(1,3,1)
 
     if slice_type==0:
@@ -498,6 +502,7 @@ def demo_near_dwi(idx=-1):
 
 def register(metric_name, static, moving, static_grid2space, moving_grid2space):
     if metric_name == 'LCC':
+        from dipy.align.imaffine import LocalCCMetric
         radius = 4
         metric = LocalCCMetric(radius)
     elif metric_name == 'MI':
@@ -742,7 +747,7 @@ w_path_nib.to_filename('w_path.nii.gz')
 P = np.random.permutation(range(1,33))
 for i in range(32):
     s = w_path.shape[2]//2
-    figure()
+    figure(facecolor='white')
     subplot(1,2,1)
     imshow(w_path[:,:,s,P[i]].T)
     subplot(1,2,2)
@@ -854,7 +859,7 @@ def optimal_vs_average_experiment():
     delta_mean = fmean_t2lab.max() - min_mean
     fmean_t2lab_norm = (fmean_t2lab - min_mean)/(fmean_t2lab.max() - min_mean)
 
-    t2lab_fig = plt.figure()
+    t2lab_fig = plt.figure(facecolor='white')
     ax = t2lab_fig.add_subplot(1,2,1)
     compare_transfers(ax, fmean_t2lab, fopt_t2lab_nz, "Iso-set mean", "Optimized", 2, 'T2', 'F[T2]')
     ax = t2lab_fig.add_subplot(1,2,2)
@@ -872,7 +877,7 @@ def optimal_vs_average_experiment():
     delta_mean = fmean_t1lab.max() - min_mean
     fmean_t1lab_norm = (fmean_t1lab - min_mean)/(fmean_t1lab.max() - min_mean)
 
-    t1lab_fig = plt.figure()
+    t1lab_fig = plt.figure(facecolor='white')
     ax = t1lab_fig.add_subplot(1,2,1)
     compare_transfers(ax, fmean_t1lab, fopt_t1lab_nz, "Iso-set mean", "Optimized", 2, 'T1', 'F[T1]')
     ax = t1lab_fig.add_subplot(1,2,2)
@@ -904,7 +909,7 @@ def optimal_transfer_different_window_sizes():
     # Plot RMSE graphs
     rmse_t1lab = [diff_t1lab[i] for i in range(2, max_size+1)]
     rmse_t2lab = [diff_t2lab[i] for i in range(2, max_size+1)]
-    fig = plt.figure()
+    fig = plt.figure(facecolor='white')
     ax = fig.add_subplot(1,1,1)
     ax.set_xticks(range(2,max_size+1))
     ax.set_xlabel('Window size', fontsize=24)
@@ -918,7 +923,7 @@ def optimal_transfer_different_window_sizes():
 
 
 def plot_average_and_optimized_transfers():
-    fig = plt.figure()
+    fig = plt.figure(facecolor='white')
     ax = fig.add_subplot(1,2,1)
     compare_transfers(ax, fmean_t1lab, opt_list_t1lab[4], "Iso-set mean", "Optimized", 1, 'T1', 'F[T1]')
     ax = fig.add_subplot(1,2,2)
