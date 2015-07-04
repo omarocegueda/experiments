@@ -553,13 +553,10 @@ def split_dwi(argv, required_files):
                 print('Undefined schedule: '+ argv[2])
                 sys.exit(0)
             if argc < 4:
-                print('Please provide the (n x 4) B-matrix file name.')
+                print('Please provide the B-matrix file name.')
                 sys.exit(0)
             Bfname = argv[3]
             B = np.loadtxt(Bfname)
-            if B.shape != (n,4):
-                print('Invalid B-matrix. Shape is (%d, %d). Expected: (%d, %d)' % (B.shape[0], B.shape[1], n, 4))
-                sys.exit(0)
             regs, centroid, paths = create_mst_correction_schedule(B[:,:3])
             print('Registration schedule (mst) with centroid %d.' % (centroid,))
 
