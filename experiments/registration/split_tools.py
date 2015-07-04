@@ -527,6 +527,7 @@ def split_dwi(argv, required_files):
             subprocess.call('ln %s %s' % (ifname, reference_path), shell=True)
             for f in required_files:
                 subprocess.call('ln %s %s' % (f, dir_name), shell=True)
+        sys.exit(0)
     if argv[1]=='u':
         dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
         for name in dirNames:
