@@ -462,7 +462,7 @@ def split_dwi(argv, required_files):
         n = dwi.shape[3]
         print('Loaded %d volumes' % (n))
         if argc < 4:
-            print('Please specify the reference volume')
+            print('Please specify the reference volume or schedule type')
             sys.exit(0)
         try:
             reference = int(argv[3])
@@ -472,8 +472,8 @@ def split_dwi(argv, required_files):
             regs, centroid, paths = create_ref_correction_schedule(n, ref)
             print('Registration schedule (star) with centroid %d.' % (ref,))
         except:
-            if reference != 'MST':
-                print('Undefined schedule: '+ str(reference))
+            if argv[3] != 'MST':
+                print('Undefined schedule: '+ argv[3])
                 sys.exit(0)
             if argc < 5:
                 print('Please provide the (n x 4) B-matrix file name.')
