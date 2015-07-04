@@ -507,8 +507,8 @@ def split_dwi(argv, required_files):
             mkdir_p(os.path.join(dir_name,'target'))
             mkdir_p(os.path.join(dir_name,'reference'))
             mkdir_p(os.path.join(dir_name,'warp'))
-            subprocess.call('ln %s %s' % (ifname, target_path), shell=True)
-            subprocess.call('ln %s %s' % (jfname, reference_path), shell=True)
+            subprocess.call('ln %s %s' % (jfname, target_path), shell=True)
+            subprocess.call('ln %s %s' % (ifname, reference_path), shell=True)
             for f in required_files:
                 subprocess.call('ln %s %s' % (f, dir_name), shell=True)
 
