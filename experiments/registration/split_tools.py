@@ -544,8 +544,6 @@ def split_dwi(argv, required_files):
         sys.exit(0)
     ############################Execute##################################
     if argv[1]=='e':
-        dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
-        n = 1 + len(dirNames)
         if argc < 3:
             print('Please specify the reference volume or schedule type')
             sys.exit(0)
@@ -554,6 +552,8 @@ def split_dwi(argv, required_files):
             if reference < 0 or reference >= n:
                 print('Invalid reference volume: %d' % (reference))
                 sys.exit(0)
+            fnames = [name for name in os.listdir(".") if fnmatch.fnmatch(name, 'dwi*.txt')]
+            n = 1 + len(fnames)
             regs, centroid, paths = create_ref_correction_schedule(n, ref)
             print('Registration schedule (star) with centroid %d.' % (ref,))
         except:
@@ -565,6 +565,7 @@ def split_dwi(argv, required_files):
                 sys.exit(0)
             Bfname = argv[3]
             B = np.loadtxt(Bfname)
+            n = B.shape[0]
             regs, centroid, paths = create_mst_correction_schedule(B[:,:3])
             print('Registration schedule (mst) with centroid %d.' % (centroid,))
 
