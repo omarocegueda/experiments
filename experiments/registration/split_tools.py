@@ -485,8 +485,8 @@ def split_dwi(argv, required_files):
             if reference < 0 or reference >= n:
                 print('Invalid reference volume: %d' % (reference))
                 sys.exit(0)
-            regs, centroid, paths = create_ref_correction_schedule(n, ref)
-            print('Registration schedule (star) with centroid %d.' % (ref,))
+            regs, centroid, paths = create_ref_correction_schedule(n, reference)
+            print('Registration schedule (star) with centroid %d.' % (centroid,))
         except:
             if argv[3] != 'MST':
                 print('Undefined schedule: '+ argv[3])
@@ -545,25 +545,31 @@ def split_dwi(argv, required_files):
     ############################Execute##################################
     if argv[1]=='e':
         if argc < 3:
+            print('Please specify the dwi file name')
+            sys.exit(0)
+        dwi_fname = argv[2]
+        dwi_nib = nib.load(dwi_fname)
+        dwi = dwi_nib.get_data().squeeze()
+        n = dwi.shape[3]
+        print('Loaded %d volumes' % (n))
+        if argc < 4:
             print('Please specify the reference volume or schedule type')
             sys.exit(0)
         try:
-            reference = int(argv[2])
+            reference = int(argv[3])
             if reference < 0 or reference >= n:
                 print('Invalid reference volume: %d' % (reference))
                 sys.exit(0)
-            fnames = [name for name in os.listdir(".") if fnmatch.fnmatch(name, 'dwi*.txt')]
-            n = 1 + len(fnames)
-            regs, centroid, paths = create_ref_correction_schedule(n, ref)
-            print('Registration schedule (star) with centroid %d.' % (ref,))
+            regs, centroid, paths = create_ref_correction_schedule(n, reference)
+            print('Registration schedule (star) with centroid %d.' % (centroid,))
         except:
-            if argv[2] != 'MST':
-                print('Undefined schedule: '+ argv[2])
+            if argv[3] != 'MST':
+                print('Undefined schedule: '+ argv[3])
                 sys.exit(0)
-            if argc < 4:
+            if argc < 5:
                 print('Please provide the B-matrix file name.')
                 sys.exit(0)
-            Bfname = argv[3]
+            Bfname = argv[4]
             B = np.loadtxt(Bfname)
             n = B.shape[0]
             regs, centroid, paths = create_mst_correction_schedule(B[:,:3])
