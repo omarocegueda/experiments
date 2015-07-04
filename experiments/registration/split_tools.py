@@ -578,7 +578,7 @@ def split_dwi(argv, required_files):
             print('Loaded matrix %s' % mname)
         for i in range(n):
             affine = execute_path(paths[i], matrices)
-            affname = os.path.join('mst', 'dwi_%03d_dwi_%03dAffine.txt' % (centroid, i))
+            affname = os.path.join('mst', 'dwi_%03d_dwi_%03dAffine.txt' % (i, centroid))
             np.savetxt(affname, affine)
         sys.exit(0)
     ############################Unknown##################################
