@@ -576,7 +576,7 @@ def split_dwi(argv, required_files):
             matrices[(i,j)] = np.loadtxt(mname)
             print('Loaded matrix %s' % mname)
         for i in range(n):
-            affine = execute_path(path[i], matrices)
+            affine = execute_path(paths[i], matrices)
             affname = os.path.join('results', 'mst_%03d_%03dAffine.txt')
             np.savetxt(affname, affine)
         sys.exit(0)
