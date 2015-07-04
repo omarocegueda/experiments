@@ -598,7 +598,8 @@ def split_dwi(argv, required_files):
             affname = os.path.join('mst', 'dwi_%03d_dwi_%03dAffine.txt' % (i, centroid))
             np.savetxt(affname, affine)
         corrected_nib = nib.Nifti1Image(corrected, dwi_nib.get_affine())
-        corrected_nib.to_filename('corrected.nii.gz')
+        oname = os.path.join('mst', 'corrected.nii.gz')
+        corrected_nib.to_filename(oname)
         sys.exit(0)
     ############################Unknown##################################
     print 'Unknown option "'+argv[1]+'". The available options are "(c)"lean, "(s)"plit, s"(u)"bmit, c"(o)"llect.'
