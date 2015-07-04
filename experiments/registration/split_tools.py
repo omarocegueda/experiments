@@ -511,10 +511,28 @@ def split_dwi(argv, required_files):
             subprocess.call('ln %s %s' % (ifname, reference_path), shell=True)
             for f in required_files:
                 subprocess.call('ln %s %s' % (f, dir_name), shell=True)
-
-
-
-
+    if argv[1]=='u':
+        dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
+        for name in dirNames:
+            os.chdir('./'+name)
+            subprocess.call('qsub job*.sh -d . -q batch', shell=True)
+            os.chdir('./..')
+        sys.exit(0)
+    if argv[1]=='o':
+        mkdir_p('results')
+        dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
+        matrices = {}
+        for name in dirNames:
+            subprocess.call('mv '+os.path.join(name,'*.txt')+' results', shell=True)
+            subprocess.call('mv '+os.path.join(name,'*.e*')+' results', shell=True)
+            subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
+            i, j = [int(s) for s in name.split('_')]
+            mname = os.path.join(name, 'dwi_%03d_dwi%03dAffine.txt' % (j, i))
+            matrices[(i,j)] = np.loadtxt(mname)
+            print('Loaded matrix %s' % mname)
+        sys.exit(0)
+    ############################Unknown##################################
+    print 'Unknown option "'+argv[1]+'". The available options are "(c)"lean, "(s)"plit, s"(u)"bmit, c"(o)"llect.'
 
 
 
