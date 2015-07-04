@@ -74,22 +74,18 @@ def create_mst_correction_schedule(bvecs):
 
     return regs, centroid, paths
 
-def execute_path(path):
+def execute_path(path, matrices):
     n = len(path)
     affine = np.eye(4)
     for i in range(1,n):
         static = path[i-1]
         moving = path[i]
-        fname = 'align_'+str(static)+'_'+str(moving)+'.npy'
-        if os.path.isfile(fname):
-            new = np.load(fname)
-        else:
-            fname = 'align_'+str(moving)+'_'+str(static)+'.npy'
-            if os.path.isfile(fname):
-                new = np.load(fname)
-                new = np.linalg.inv(new)
-            else:
+        new = matrices.get((static, moving))
+        if new is None:
+            new = matrices.get((moving, static))
+            if new is None:
                 raise ValueError("Path broken")
+            new = np.linalg.inv(new)
         affine = affine.dot(new)
     return affine
 
@@ -461,7 +457,7 @@ def split_dwi(argv, required_files):
     argc=len(argv)
     #############################No parameters#############################
     if argc < 2:
-        print 'Please specify an action: c "(clean)", s "(split)", u "(submit)", o "(collect)"'
+        print 'Please specify an action: c "(clean)", s "(split)", u "(submit)", o "(collect)", e "(execute)"'
         sys.exit(0)
     #############################Clean#####################################
     if argv[1]=='c':
@@ -537,7 +533,19 @@ def split_dwi(argv, required_files):
             subprocess.call('qsub job*.sh -d . -q batch', shell=True)
             os.chdir('./..')
         sys.exit(0)
+    ############################Collect##################################
     if argv[1]=='o':
+        mkdir_p('results')
+        dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
+        for name in dirNames:
+            subprocess.call('mv '+os.path.join(name,'*.txt')+' results', shell=True)
+            subprocess.call('mv '+os.path.join(name,'*.e*')+' results', shell=True)
+            subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
+        sys.exit(0)
+    ############################Execute##################################
+    if argv[1]=='e':
+        dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
+        n = 1 + len(dirNames)
         if argc < 3:
             print('Please specify the reference volume or schedule type')
             sys.exit(0)
@@ -564,13 +572,14 @@ def split_dwi(argv, required_files):
         dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
         matrices = {}
         for name in dirNames:
-            #subprocess.call('mv '+os.path.join(name,'*.txt')+' results', shell=True)
-            #subprocess.call('mv '+os.path.join(name,'*.e*')+' results', shell=True)
-            #subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
             j, i = [int(s) for s in name.split('_')]
             mname = os.path.join(name, 'dwi_%03d_dwi_%03dAffine.txt' % (j, i))
             matrices[(i,j)] = np.loadtxt(mname)
             print('Loaded matrix %s' % mname)
+        for i in range(n):
+            affine = execute_path(path[i], matrices)
+            affname = os.path.join('results', 'mst_%03d_%03dAffine.txt')
+            np.savetxt(affname, affine)
         sys.exit(0)
     ############################Unknown##################################
     print 'Unknown option "'+argv[1]+'". The available options are "(c)"lean, "(s)"plit, s"(u)"bmit, c"(o)"llect.'
