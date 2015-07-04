@@ -568,7 +568,7 @@ def split_dwi(argv, required_files):
             #subprocess.call('mv '+os.path.join(name,'*.e*')+' results', shell=True)
             #subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
             j, i = [int(s) for s in name.split('_')]
-            mname = os.path.join(name, 'dwi_%03d_dwi%03dAffine.txt' % (j, i))
+            mname = os.path.join(name, 'dwi_%03d_dwi_%03dAffine.txt' % (j, i))
             matrices[(i,j)] = np.loadtxt(mname)
             print('Loaded matrix %s' % mname)
         sys.exit(0)
