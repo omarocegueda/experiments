@@ -440,7 +440,7 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
 def split_dwi(argv, required_files):
     argc=len(argv)
     #############################No parameters#############################
-    if not argv[1]:
+    if argc < 2:
         print 'Please specify an action: c "(clean)", s "(split)", u "(submit)", o "(collect)"'
         sys.exit(0)
     #############################Clean#####################################
@@ -461,7 +461,7 @@ def split_dwi(argv, required_files):
         dwi = dwi_nib.get_data().squeeze()
         n = dwi.shape[3]
         print('Loaded %d volumes' % (n))
-        if argv < 4:
+        if argc < 4:
             print('Please specify the reference volume')
             sys.exit(0)
         try:
