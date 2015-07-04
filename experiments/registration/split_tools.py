@@ -6,6 +6,7 @@ import subprocess
 import errno
 from rcommon import decompose_path
 import nibabel as nib
+import numpy as np
 
 def create_ref_correction_schedule(n, ref):
     regs = []
