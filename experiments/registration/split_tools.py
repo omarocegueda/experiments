@@ -505,12 +505,14 @@ def split_dwi(argv, required_files):
 
         # Create one image per volume
         mkdir_p('dwi_split')
+        print('Creating individual volumes...')
         for i in range(n):
             fname = os.path.join('dwi_split', 'dwi_%03d.nii.gz' % (i,))
             print('Extracting volume %s ...' % fname)
             i_nib = nib.Nifti1Image(dwi[...,i], dwi_nib.get_affine())
             i_nib.to_filename(fname)
         # Create the registration jobs
+        print('Creating registration jobs...')
         for reg in regs:
             i, j = reg
             stri = '%02d' % (i,)
