@@ -569,11 +569,10 @@ def split_dwi(argv, required_files):
             print('Registration schedule (mst) with centroid %d.' % (centroid,))
 
         mkdir_p('results')
-        dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
         matrices = {}
-        for name in dirNames:
-            j, i = [int(s) for s in name.split('_')]
-            mname = os.path.join(name, 'dwi_%03d_dwi_%03dAffine.txt' % (j, i))
+        for reg in regs:
+            i, j = reg
+            mname = 'dwi_%03d_dwi_%03dAffine.txt' % (j, i)
             matrices[(i,j)] = np.loadtxt(mname)
             print('Loaded matrix %s' % mname)
         for i in range(n):
