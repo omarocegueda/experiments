@@ -601,10 +601,10 @@ def split_dwi(argv, required_files):
             out_shape = np.array(dwi[...,i].shape, dtype=np.int32)
             warped = warp_3d_affine(in_vol, out_shape, M)
             corrected[...,i] = warped[...]
-            affname = os.path.join('mst', 'dwi_%03d_dwi_%03dAffine.txt' % (i, centroid))
+            affname = os.path.join(destination, 'dwi_%03d_dwi_%03dAffine.txt' % (i, centroid))
             np.savetxt(affname, affine)
         corrected_nib = nib.Nifti1Image(corrected, dwi_nib.get_affine())
-        oname = os.path.join('mst', 'corrected.nii.gz')
+        oname = os.path.join(destination, 'corrected.nii.gz')
         corrected_nib.to_filename(oname)
         sys.exit(0)
     ############################Unknown##################################
