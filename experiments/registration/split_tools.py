@@ -566,7 +566,7 @@ def split_dwi(argv, required_files):
                 print('Invalid reference volume: %d' % (reference))
                 sys.exit(0)
             regs, centroid, paths = create_ref_correction_schedule(n, reference)
-            destination = 'star_%d' % reference
+            destination = 'star_%d' % (reference,)
             print('Registration schedule (star) with centroid %d.' % (centroid,))
         except:
             if argv[3] != 'MST':
@@ -579,7 +579,7 @@ def split_dwi(argv, required_files):
             B = np.loadtxt(Bfname)
             n = B.shape[0]
             regs, centroid, paths = create_mst_correction_schedule(B[:,:3])
-            destination = 'mst_%d' % reference
+            destination = 'mst_%d' % (centroid,)
             print('Registration schedule (mst) with centroid %d.' % (centroid,))
 
         mkdir_p(destination)

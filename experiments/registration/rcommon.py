@@ -77,3 +77,36 @@ def readAntsAffine(fname, ref_coordinate_system='LPS', tgt_coordinate_system='LP
     T=tgt_conversion.dot(T.dot(ref_conversion))
     ###########################################################################################
     return T
+
+
+def add_random_rigid_transforms(dwi, grid2world):
+    from dipy.align.transforms import RigidTransform3D
+    from dipy.align.vector_fields import warp_3d_affine
+    if grid2world is None:
+        grid2world = np.eye(4)
+        world2grid = np.eye(4)
+    else:
+        world2grid = np.linalg.inv(grid2world)
+
+    # sigmas in degrees
+    sigmas = np.array([3, 3, 3, 2, 2, 2], dtype=np.float64)
+    # to radians
+    sigmas[:3] *= np.pi/180.0
+    n = dwi.shape[3]
+    rigid = RigidTransform3D()
+    transforms = []
+    jitter = np.empty_like(dwi)
+    for i in range(n):
+        theta = np.random.randn(6)
+        theta *= sigmas
+        gt = rigid.param_to_matrix(theta)
+        gt_inv = np.linalg.inv(gt)
+        M = world2grid.dot(gt_inv.dot(grid2world))
+        in_vol = dwi[...,i].astype(np.float32)
+        out_shape = np.array(dwi[...,i].shape, dtype=np.int32)
+        w = warp_3d_affine(in_vol, out_shape, M)
+        jitter[...,i] = w[...]
+        transforms.append(gt)
+    return jitter, transforms
+
+
