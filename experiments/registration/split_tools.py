@@ -15,6 +15,7 @@ def create_ref_correction_schedule(n, ref):
     paths = {}
     for i in range(n):
         if i == ref:
+            paths[i] = [ref]
             continue
         regs.append((ref, i))
         paths[i] = [centroid, i]
