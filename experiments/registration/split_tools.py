@@ -581,7 +581,9 @@ def split_dwi(argv, required_files):
             regs, centroid, paths = create_mst_correction_schedule(B[:,:3])
             destination = 'mst_%d' % (centroid,)
             print('Registration schedule (mst) with centroid %d.' % (centroid,))
-
+        transform_format = 'Dipy'
+        if argc > 5:
+            transform_format = argv[5]
         mkdir_p(destination)
         matrices = {}
         for reg in regs:
