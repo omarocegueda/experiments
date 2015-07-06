@@ -4,7 +4,7 @@ import fnmatch
 import shutil
 import subprocess
 import errno
-from rcommon import decompose_path
+from rcommon import (decompose_path, readAntsAffine)
 import nibabel as nib
 import numpy as np
 from dipy.align.vector_fields import warp_3d_affine
@@ -587,7 +587,12 @@ def split_dwi(argv, required_files):
         for reg in regs:
             i, j = reg
             mname = 'dwi_%03d_dwi_%03dAffine.txt' % (j, i)
-            matrices[(i,j)] = np.loadtxt(mname)
+            if transform_format == 'Dipy':
+                matrices[(i,j)] = np.loadtxt(mname)
+            elif transform_format == 'ANTS':
+                matrices[(i,j)] = readAntsAffine(mname)
+            else:
+                raise ValueError('Transform format not supported: %s' % (transform_format,))
             print('Loaded matrix %s' % mname)
         corrected = np.empty_like(dwi)
         for i in range(n):
