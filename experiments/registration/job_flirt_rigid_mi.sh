@@ -6,7 +6,7 @@
 #PBS -l vmem=2GB
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=02:00:00
-#PBS -N FLIRT-MI
+#PBS -N FLIRT-RIGID-MI
 
 # Configure your environment
 export DIPY_DIR="$HOME/opt/dipy"
