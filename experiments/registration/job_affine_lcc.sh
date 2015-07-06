@@ -5,8 +5,8 @@
 #PBS -l pmem=4GB
 #PBS -l vmem=4GB
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=02:00:00
-#PBS -N Aff-MI
+#PBS -l walltime=06:00:00
+#PBS -N Aff-LCC
 
 # Configure your environment
 export DIPY_DIR="$HOME/opt/dipy"
@@ -28,5 +28,5 @@ targetbase="${targetbase%.*}"
 referencebase="${reference%.*}"
 referencebase="${referencebase%.*}"
 #Affine registration with dipy
-python dipyreg_affine.py target/$target reference/$reference warp --transforms=TRANSLATION,RIGID,AFFINE --metric=LCC[4] --iter=1000,1000,1000 --factors=4,2,1 --sigmas=3,1,0 --method=BFGS
+python dipyreg_affine.py target/$target reference/$reference warp --transforms=TRANSLATION,RIGID --metric=LCC[4] --iter=1000,1000,1000 --factors=4,2,1 --sigmas=3,1,0 --method=BFGS
 date

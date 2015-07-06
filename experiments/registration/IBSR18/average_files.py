@@ -62,11 +62,11 @@ def average_files():
 
             if(id == '_seg_'):
                 # Print only scores corresponding to common labels
-                out = open(pref+'_common_'+str(i+1)+'.txt', 'w')
+                out = open(pref+'_common.txt', 'w')
                 for i in labels:
                     out.write(str.format("%s\t%f\t%f\n"%(labels[i], means[i], stds[i])))
                 out.close()
-                out = open(pref+'_full_common_'+str(i+1)+'.txt', 'w')
+                out = open(pref+'_full_common.txt', 'w')
                 for i in range(len(fnames)):
                     for j in labels:
                         out.write(str(scores[i,j])+"\t")
@@ -74,7 +74,7 @@ def average_files():
                 out.close()
                 scores = scores[:,[lab for lab in labels]]
                 means = scores.mean(1)
-                out = open(pref+'_boxplot_'+str(i+1)+'.txt', 'w')
+                out = open(pref+'_boxplot.txt', 'w')
                 for i in range(len(means)):
                     out.writelines([fnames[i]+"\t"+str(means[i])+"\n"])
                 #out.writelines([str(s)+'\n' for s in means])
