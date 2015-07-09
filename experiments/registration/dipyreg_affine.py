@@ -7,7 +7,7 @@ import sys
 import os
 import numpy as np
 import nibabel as nib
-from dipy.align.imaffine import MattesMIMetric, AffineRegistration, transform_image
+from dipy.align.imaffine import MattesMIMetric, AffineRegistration
 from dipy.align.transforms import regtransforms
 import dipy.align.imwarp as imwarp
 import dipy.align.metrics as metrics
@@ -181,7 +181,7 @@ def compute_scores(pairs_fname = 'jaccard_pairs.lst'):
             compute_target_overlap(r[2], warped_name, False)
 
 
-def save_registration_results(affine, params):
+def save_registration_results(aff_trans, params):
     r'''
     Warp the moving image using the obtained affine transform
     '''
@@ -203,7 +203,7 @@ def save_registration_results(affine, params):
     static_affine = static_affine[:(dim + 1), :(dim + 1)]
     moving_affine = moving_affine[:(dim + 1), :(dim + 1)]
 
-    warped = transform_image(static, static_affine, moving, moving_affine, affine, False)
+    warped = np.array(aff_trans.transform(moving))
 
     img_affine = np.eye(4,4)
     img_affine[:(dim + 1), :(dim + 1)] = static_affine[...]
@@ -218,8 +218,8 @@ def save_registration_results(affine, params):
 
         to_warp = to_warp_nib.get_data().squeeze().astype(np.int32)
         base_warp = getBaseFileName(name)
-        print(static.dtype, static_affine.dtype, to_warp.dtype, img_affine.dtype, affine.dtype)
-        warped = transform_image(static, static_affine, to_warp, img_affine, affine, True)
+        print(static.dtype, static_affine.dtype, to_warp.dtype, img_affine.dtype)
+        warped = np.array(aff_trans.transform(to_warp, interp='nearest'))
         img_affine = np.eye(4,4)
         img_affine[:(dim + 1), :(dim + 1)] = static_affine[...]
         img_warped = nib.Nifti1Image(warped, img_affine)
@@ -239,7 +239,7 @@ def save_registration_results(affine, params):
                     print('Pair not found ['+cname+'], ['+aname+']')
     #---finally, the optional output
     oname = base_moving+'_'+base_static+'Affine.txt'
-    np.savetxt(oname, affine)
+    np.savetxt(oname, aff_trans.affine)
 
 
 def register_3d(params):
@@ -305,10 +305,10 @@ def register_3d(params):
         x0 = None
         sol = affreg.optimize(static, moving, transform, x0,
                               static_affine, moving_affine, starting_affine = prealign)
-        prealign = sol.copy()
+        prealign = sol.affine.copy()
 
     save_registration_results(sol, params)
-    print('Solution: ', sol)
+    print('Solution: ', sol.affine)
 
 
 if __name__ == '__main__':
