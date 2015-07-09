@@ -255,7 +255,12 @@ def register_3d(params):
     #Initialize the appropriate metric
     if metric_name == 'MI':
         nbins=int(metric_params_list[0])
-        metric = MattesMIMetric(nbins)
+        sampling_proportion = None
+        try:
+            sampling_proportion = float(metric_params_list[1])
+        except:
+            pass
+        metric = MattesMIMetric(nbins, sampling_proportion)
     elif metric_name == 'LCC':
         from dipy.align.imaffine import LocalCCMetric
         radius=int(metric_params_list[0])
