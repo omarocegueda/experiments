@@ -302,6 +302,7 @@ def register_3d(params):
     correction = np.eye(4, dtype=np.float64)
     correction[:3,3] = -1 * c_static[:3]
     centered_static_aff = correction.dot(static_affine)
+    centered_moving_aff = correction.dot(moving_affine)
 
     dim = len(static.shape)
     #Run the registration
@@ -312,13 +313,14 @@ def register_3d(params):
         print('Optimizing: %s'%(transform_name,))
         x0 = None
         sol = affreg.optimize(static, moving, transform, x0,
-                              centered_static_aff, moving_affine, starting_affine = prealign)
+                              centered_static_aff, centered_moving_aff, starting_affine = prealign)
         prealign = sol.affine.copy()
 
     # Correct solution
-    fixed = sol.affine.dot(correction)
+    fixed = np.linalg.inv(correction).dot(sol.affine.dot(correction))
     sol.set_affine(fixed)
     sol.domain_grid2world = static_affine
+    sol.codomain_grid2world = moving_affine
     save_registration_results(sol, params)
     print('Solution: ', sol.affine)
 
