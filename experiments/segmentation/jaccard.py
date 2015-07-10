@@ -11,7 +11,7 @@ out_fname = sys.argv[3]
 # Load the data
 seg_nib = nib.load(seg_fname)
 seg = seg_nib.get_data().squeeze()
-gt_fname = nib.load(gt_fname)
+gt_nib = nib.load(gt_fname)
 gt = gt_nib.get_data().squeeze()
 
 # Compute the scores
