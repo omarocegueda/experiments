@@ -123,7 +123,7 @@ def baseline_segmentation(double[:,:,:] img, int nclasses, int max_iter=20):
         double d
         double[:] means = np.empty(nclasses, dtype=np.float64)
         int[:] counts = np.empty(nclasses, dtype=np.int32)
-        int[:,:,:] seg = np.empty((nx, ny, nz), dtype=np.float64)
+        int[:,:,:] seg = np.empty((nx, ny, nz), dtype=np.int32)
     with nogil:
         min_val = img[0, 0, 0]
         max_val = img[0, 0, 0]
