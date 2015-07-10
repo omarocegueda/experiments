@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 import nibabel as nib
 import experiments.segmentation.evaluation as eval
 
@@ -9,9 +10,9 @@ out_fname = sys.argv[3]
 
 # Load the data
 seg_nib = nib.load(seg_fname)
-seg = seg_nib.get_data()
+seg = seg_nib.get_data().squeeze()
 gt_fname = nib.load(gt_fname)
-gt = gt_nib.get_data()
+gt = gt_nib.get_data().squeeze()
 
 # Compute the scores
 jaccard = eval.compute_jaccard(seg, gt)
