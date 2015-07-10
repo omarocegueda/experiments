@@ -94,7 +94,7 @@ parser.add_argument(
     help = '''parameter of the scale-space smoothing kernel. For example, the
            std. dev. of the kernel will be factor*(2^i) in the isotropic case
            where i=0,1,..,n_scales is the scale''',
-    default = '1.0')
+    default=None)
 
 parser.add_argument(
     '-mask0', '--mask0', action = 'store_true',
@@ -273,7 +273,10 @@ def register_3d(params):
     #Initialize the optimizer
     opt_iter = [int(i) for i in params.iter.split(',')]
     transforms = [t for t in params.transforms.split(',')]
-    ss_sigma_factor = float(params.ss_sigma_factor)
+    if params.ss_sigma_factor is not None:
+        ss_sigma_factor = float(params.ss_sigma_factor)
+    else:
+        ss_sigma_factor = None
     factors = [int(i) for i in params.factors.split(',')]
     sigmas = [float(i) for i in params.sigmas.split(',')]
     #method = 'CGGS'
