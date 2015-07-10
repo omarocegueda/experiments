@@ -1,3 +1,6 @@
+0. Make sure to add the experiments folder to your python path, for example in your ~/.bashrc or ~/.bash_profile (of course replace with the location of your code):
+    export PYTHONPATH=$PYTHONPATH:/home/omar/opt/experiments
+
 1. First you need to compile the evaluation module, this is the cython module that contains the jaccard-index computation code and a baseline segmentation algorithm (k-means)
     a) From the `segmentation` folder run:
         python setup.py build_ext --inplace
@@ -25,3 +28,5 @@ name this file `names_ibsr_seg.txt` and put it inside your `IBSR` folder
     d) Collect the results and put them inside a single folder by running:
         python ../split_baseline.py o
        The `results` subfolder now contains all the segmented files and a text file with the jaccard indices for each segmentation
+    e) Once you have moved the files from the `results` folder to a safe location, clean your working directory:
+        python ../split_baseline.py c
