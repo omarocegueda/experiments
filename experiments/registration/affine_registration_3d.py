@@ -10,16 +10,79 @@ strategy is similar to that implemented in ANTS [Avants11]_.
 import numpy as np
 import nibabel as nib
 import os.path
-from dipy.viz import regtools
+import scipy
+import scipy.ndimage as ndimage
+from dipy.viz import regtools as rt
 from dipy.data import fetch_stanford_hardi, read_stanford_hardi
 from dipy.data.fetcher import fetch_syn_data, read_syn_data
 from dipy.segment.mask import median_otsu
-from dipy.align.imaffine import (align_centers_of_mass,
-                                 transform_image,
-                                 MattesMIMetric,
-                                 LocalCCMetric,
-                                 AffineRegistration)
 from dipy.align.transforms import regtransforms
+from dipy.align.imaffine import (align_centers_of_mass,
+                                 MattesMIMetric,
+                                 AffineRegistration)
+
+
+
+jit_nib = nib.load('jittered.nii.gz')
+jit = jit_nib.get_data().squeeze()
+static = jit[...,0]
+moving = jit[...,2]
+aff = jit_nib.get_affine()
+rt.overlay_slices(static, moving, slice_type=2)
+# Bring the center of mass to the origin
+c_static = ndimage.measurements.center_of_mass(np.array(static))
+c_static = aff.dot(c_static+(1,))
+correction = np.eye(4, dtype=np.float64)
+correction[:3,3] = -1 * c_static[:3]
+new_aff = correction.dot(aff)
+
+com = align_centers_of_mass(static, new_aff, moving, new_aff)
+warped = com.transform(moving)
+rt.overlay_slices(static, warped, slice_type=2)
+
+# Create the metric
+nbins = 32
+sampling_prop = None
+metric = MattesMIMetric(nbins, sampling_prop)
+
+# Create the optimizer
+level_iters = [10000, 1000, 100]
+sigmas = [3.0, 1.0, 0.0]
+factors = [4, 2, 1]
+affreg = AffineRegistration(metric=metric,
+                            level_iters=level_iters,
+                            sigmas=sigmas,
+                            factors=factors)
+
+# Translation
+transform = regtransforms[('TRANSLATION', 3)]
+params0 = None
+starting_affine = com.affine
+trans = affreg.optimize(static, moving, transform, params0,
+                        new_aff, new_aff,
+                        starting_affine=starting_affine)
+warped = trans.transform(moving)
+rt.overlay_slices(static, warped, None, 0, "Static", "Warped", "warped_trans_0.png")
+rt.overlay_slices(static, warped, None, 1, "Static", "Warped", "warped_trans_1.png")
+rt.overlay_slices(static, warped, None, 2, "Static", "Warped", "warped_trans_2.png")
+
+# Rigid
+transform = regtransforms[('RIGID', 3)]
+params0 = None
+starting_affine = trans.affine
+rigid = affreg.optimize(static, moving, transform, params0,
+                        new_aff, new_aff,
+                        starting_affine=starting_affine)
+# fix solution
+backup = rigid.affine
+fixed = rigid.affine.dot(correction)
+rigid.set_affine(fixed)
+rigid.domain_grid2world = aff
+
+warped = rigid.transform(moving)
+rt.overlay_slices(static, warped, None, 0, "Static", "Warped", "warped_trans_0.png")
+rt.overlay_slices(static, warped, None, 1, "Static", "Warped", "warped_trans_1.png")
+rt.overlay_slices(static, warped, None, 2, "Static", "Warped", "warped_trans_2.png")
 
 """
 Let's fetch two b0 volumes, the static image will be the b0 from the Stanford
@@ -268,15 +331,15 @@ pre_align_cc = np.array([[  1.02797013e+00,  -4.46004768e-02,  -4.45651097e-02, 
                          [ -2.84847443e-03,   9.30403951e-01,  -2.58580228e-01,   3.15228099e+01],
                          [  3.30472637e-02,   2.85205574e-01,   9.63671270e-01,  -1.29812789e+01],
                          [  0.00000000e+00,   0.00000000e+00,   0.00000000e+00,   1.00000000e+00]])
-                         
+
 # gradient of warped image
 #1.2793362473847294
 pre_align_cc = np.array([[  1.02308414e+00,  -2.80493738e-02,  -3.84216071e-02,  -3.29484759e+00],
                          [ -3.30231901e-02,   9.33749783e-01,  -2.47734290e-01,   3.20531970e+01],
                          [  4.51376961e-02,   2.69667242e-01,   9.58674621e-01,  -1.27004183e+01],
                          [  0.00000000e+00,   0.00000000e+00,   0.00000000e+00,   1.00000000e+00]])
-                         
-                         
+
+
 warped_cc = transform_image(static, static_grid2space, moving, moving_grid2space, pre_align_cc)
 regtools.overlay_slices(static, warped_cc, None, 0, "Static", "Warped", "warped_affine_0.png")
 regtools.overlay_slices(static, warped_cc, None, 1, "Static", "Warped", "warped_affine_1.png")
@@ -285,10 +348,10 @@ metric.update_pdfs_dense(static.astype(double), warped_cc.astype(double))
 metric.update_mi_metric()
 metric.metric_val
 # 1.2792485621027512
-                    
-                         
-                         
- 
+
+
+
+
 pre_align = np.array([[1.02783543e+00, -4.83019053e-02, -6.07735639e-02, -2.57654118e+00],
                       [4.34051706e-03, 9.41918267e-01, -2.66525861e-01, 3.23579799e+01],
                       [5.34288908e-02, 2.90262026e-01, 9.80820307e-01, -1.46216651e+01],

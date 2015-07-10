@@ -6,6 +6,8 @@ from __future__ import print_function
 import sys
 import os
 import numpy as np
+import scipy
+import scipy.ndimage as ndimage
 import nibabel as nib
 from dipy.align.imaffine import MattesMIMetric, AffineRegistration
 from dipy.align.transforms import regtransforms
@@ -291,11 +293,14 @@ def register_3d(params):
     static_nib = nib.load(params.static)
     static_affine = static_nib.get_affine()
     static = static_nib.get_data().squeeze().astype(np.float64)
+    # Bring the center of mass to the origin
+    c_static = ndimage.measurements.center_of_mass(np.array(static))
+    c_static = static_affine.dot(c_static+(1,))
+    correction = np.eye(4, dtype=np.float64)
+    correction[:3,3] = -1 * c_static[:3]
+    centered_static_aff = correction.dot(static_affine)
 
     dim = len(static.shape)
-    static_affine = static_affine[:(dim + 1), :(dim + 1)]
-    moving_affine = moving_affine[:(dim + 1), :(dim + 1)]
-
     #Preprocess the data
     moving = (moving-moving.min())/(moving.max()-moving.min())
     static = (static-static.min())/(static.max()-static.min())
@@ -303,15 +308,18 @@ def register_3d(params):
     #Run the registration
     sol = np.eye(dim + 1)
     prealign = 'mass'
-
     for transform_name in transforms:
         transform = regtransforms[(transform_name, dim)]
         print('Optimizing: %s'%(transform_name,))
         x0 = None
         sol = affreg.optimize(static, moving, transform, x0,
-                              static_affine, moving_affine, starting_affine = prealign)
+                              centered_static_aff, moving_affine, starting_affine = prealign)
         prealign = sol.affine.copy()
 
+    # Correct solution
+    fixed = sol.affine.dot(correction)
+    sol.set_affine(fixed)
+    sol.domain_grid2world = static_affine
     save_registration_results(sol, params)
     print('Solution: ', sol.affine)
 
