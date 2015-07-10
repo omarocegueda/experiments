@@ -10,9 +10,9 @@ out_fname = sys.argv[3]
 
 # Load the data
 seg_nib = nib.load(seg_fname)
-seg = seg_nib.get_data().squeeze()
+seg = seg_nib.get_data().squeeze().astype(np.int32)
 gt_nib = nib.load(gt_fname)
-gt = gt_nib.get_data().squeeze()
+gt = gt_nib.get_data().squeeze().astype(np.int32)
 
 # Compute the scores
 jaccard = eval.compute_jaccard(seg, gt)
