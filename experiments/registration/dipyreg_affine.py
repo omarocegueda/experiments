@@ -304,10 +304,6 @@ def register_3d(params):
     centered_static_aff = correction.dot(static_affine)
 
     dim = len(static.shape)
-    #Preprocess the data
-    moving = (moving-moving.min())/(moving.max()-moving.min())
-    static = (static-static.min())/(static.max()-static.min())
-
     #Run the registration
     sol = np.eye(dim + 1)
     prealign = 'mass'
