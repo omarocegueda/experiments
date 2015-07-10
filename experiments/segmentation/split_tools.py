@@ -71,9 +71,9 @@ def split_all_images(names, required_files):
         current_set = names[i-1]
         dir_name = "%02d" % (i)
 
-        mkdir_p(os.path.join(dir_name,'input'))
+        mkdir_p(os.path.join(dir_name,'img'))
         mkdir_p(os.path.join(dir_name,'seg'))
-        link_image(current_set[0], dir_name+'/input')
+        link_image(current_set[0], dir_name+'/img')
         link_image(current_set[1], dir_name+'/seg')
         for f in required_files:
             subprocess.call('ln '+f+' '+dir_name, shell=True)
