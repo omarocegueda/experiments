@@ -297,7 +297,8 @@ def register_3d(params):
     static_affine = static_nib.get_affine()
     static = static_nib.get_data().squeeze().astype(np.float64)
     # Bring the center of mass to the origin
-    c_static = ndimage.measurements.center_of_mass(np.array(static))
+    #c_static = ndimage.measurements.center_of_mass(np.array(static))
+    c_static = tuple(0.5 * np.array(static.shape, dtype=np.float64))
     c_static = static_affine.dot(c_static+(1,))
     correction = np.eye(4, dtype=np.float64)
     correction[:3,3] = -1 * c_static[:3]
