@@ -27,16 +27,26 @@ jit_nib = nib.load('jittered.nii.gz')
 jit = jit_nib.get_data().squeeze()
 static = jit[...,0]
 moving = jit[...,2]
-aff = jit_nib.get_affine()
+aff_static = jit_nib.get_affine()
+aff_moving = jit_nib.get_affine()
 rt.overlay_slices(static, moving, slice_type=2)
 # Bring the center of mass to the origin
-c_static = ndimage.measurements.center_of_mass(np.array(static))
-c_static = aff.dot(c_static+(1,))
-correction = np.eye(4, dtype=np.float64)
-correction[:3,3] = -1 * c_static[:3]
-new_aff = correction.dot(aff)
+#c_static = ndimage.measurements.center_of_mass(np.array(static))
+c_static = tuple(0.5 * np.array(static.shape, dtype=np.float64))
+c_static = aff_static.dot(c_static+(1,))
+correction_static = np.eye(4, dtype=np.float64)
+correction_static[:3,3] = -1 * c_static[:3]
 
-com = align_centers_of_mass(static, new_aff, moving, new_aff)
+#c_moving = ndimage.measurements.center_of_mass(np.array(moving))
+c_moving = tuple(0.5 * np.array(moving.shape, dtype=np.float64))
+c_moving = aff_static.dot(c_moving+(1,))
+correction_moving = np.eye(4, dtype=np.float64)
+correction_moving[:3,3] = -1 * c_moving[:3]
+
+new_aff_static = correction_static.dot(aff_static)
+new_aff_moving = correction_moving.dot(aff_moving)
+
+com = align_centers_of_mass(static, new_aff_static, moving, new_aff_moving)
 warped = com.transform(moving)
 rt.overlay_slices(static, warped, slice_type=2)
 
@@ -59,7 +69,7 @@ transform = regtransforms[('TRANSLATION', 3)]
 params0 = None
 starting_affine = com.affine
 trans = affreg.optimize(static, moving, transform, params0,
-                        new_aff, new_aff,
+                        new_aff_static, new_aff_moving,
                         starting_affine=starting_affine)
 warped = trans.transform(moving)
 rt.overlay_slices(static, warped, None, 0, "Static", "Warped", "warped_trans_0.png")
@@ -71,13 +81,14 @@ transform = regtransforms[('RIGID', 3)]
 params0 = None
 starting_affine = trans.affine
 rigid = affreg.optimize(static, moving, transform, params0,
-                        new_aff, new_aff,
+                        new_aff_static, new_aff_moving,
                         starting_affine=starting_affine)
 # fix solution
 backup = rigid.affine
-fixed = rigid.affine.dot(correction)
+fixed = np.linalg.inv(correction_moving).dot(rigid.affine.dot(correction_static))
 rigid.set_affine(fixed)
-rigid.domain_grid2world = aff
+rigid.domain_grid2world = aff_static
+rigid.codomain_grid2world = aff_moving
 
 warped = rigid.transform(moving)
 rt.overlay_slices(static, warped, None, 0, "Static", "Warped", "warped_trans_0.png")
