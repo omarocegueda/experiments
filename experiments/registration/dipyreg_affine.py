@@ -292,18 +292,24 @@ def register_3d(params):
     moving_nib = nib.load(params.moving)
     moving_affine = moving_nib.get_affine()
     moving = moving_nib.get_data().squeeze().astype(np.float64)
+    # Bring the center of the image to the origin
+    #c_moving = ndimage.measurements.center_of_mass(np.array(moving))
+    c_moving = tuple(0.5 * np.array(moving.shape, dtype=np.float64))
+    c_moving = moving_affine.dot(c_moving+(1,))
+    correction_moving = np.eye(4, dtype=np.float64)
+    correction_moving[:3,3] = -1 * c_moving[:3]
+    centered_moving_aff = correction_moving.dot(moving_affine)
 
     static_nib = nib.load(params.static)
     static_affine = static_nib.get_affine()
     static = static_nib.get_data().squeeze().astype(np.float64)
-    # Bring the center of mass to the origin
+    # Bring the center of the image to the origin
     #c_static = ndimage.measurements.center_of_mass(np.array(static))
     c_static = tuple(0.5 * np.array(static.shape, dtype=np.float64))
     c_static = static_affine.dot(c_static+(1,))
-    correction = np.eye(4, dtype=np.float64)
-    correction[:3,3] = -1 * c_static[:3]
-    centered_static_aff = correction.dot(static_affine)
-    centered_moving_aff = correction.dot(moving_affine)
+    correction_static = np.eye(4, dtype=np.float64)
+    correction_static[:3,3] = -1 * c_static[:3]
+    centered_static_aff = correction_static.dot(static_affine)
 
     dim = len(static.shape)
     #Run the registration
@@ -318,7 +324,7 @@ def register_3d(params):
         prealign = sol.affine.copy()
 
     # Correct solution
-    fixed = np.linalg.inv(correction).dot(sol.affine.dot(correction))
+    fixed = np.linalg.inv(correction_moving).dot(sol.affine.dot(correction_static))
     sol.set_affine(fixed)
     sol.domain_grid2world = static_affine
     sol.codomain_grid2world = moving_affine
