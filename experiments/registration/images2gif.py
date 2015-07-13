@@ -829,6 +829,20 @@ class NeuQuant:
         return a
 
 
+def gif_from_slices(dwi_in, oname, slice_type=2, slice_index=None, dt=0.1, ):
+    min_val = dwi_in.min()
+    max_val = dwi_in.max()
+    dwi = (255 * ((dwi_in - min_val)/(max_val - min_val))).astype(np.uint8)
+    if slice_index is None:
+        slice_index = dwi.shape[slice_type]//2
+    n = dwi.shape[3]
+    if slice_type == 0:
+        slices = [dwi[slice_index,:,:,i].T[::-1,:] for i in range(n)]
+    if slice_type == 1:
+        slices = [dwi[:,slice_index,:,i].T[::-1,:] for i in range(n)]
+    if slice_type == 2:
+        slices = [dwi[:,:,slice_index,i].T[::-1,:] for i in range(n)]
+    writeGif(oname, slices, duration=dt, dither=0)
 
 if __name__ == '__main__':
     im = np.zeros((200,200,3), dtype=np.uint32)
