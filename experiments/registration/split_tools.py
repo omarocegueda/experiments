@@ -7,7 +7,7 @@ import errno
 from rcommon import (decompose_path, readAntsAffine)
 import nibabel as nib
 import numpy as np
-from dipy.align.vector_fields import warp_3d_affine
+from dipy.align.vector_fields import transform_3d_affine
 
 def create_ref_correction_schedule(n, ref):
     regs = []
@@ -606,7 +606,7 @@ def split_dwi(argv, required_files):
 
             in_vol = dwi[...,i].astype(np.float32)
             out_shape = np.array(dwi[...,i].shape, dtype=np.int32)
-            warped = warp_3d_affine(in_vol, out_shape, M)
+            warped = transform_3d_affine(in_vol, out_shape, M)
             corrected[...,i] = warped[...]
             affname = os.path.join(destination, 'dwi_%03d_dwi_%03dAffine.txt' % (i, centroid))
             np.savetxt(affname, affine)
