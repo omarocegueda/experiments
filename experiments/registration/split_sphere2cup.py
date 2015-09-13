@@ -6,8 +6,8 @@ import fnmatch
 
 cmd = sys.argv[1]
 if cmd == 's':
-    step_length_list = [25, 35, 45, 55, 65, 75]
-    inv_iter_list = [20, 40, 100, 200]
+    step_length_list = [15, 25, 35, 45]
+    inv_iter_list = [10, 20, 30, 40]
     inv_tol_list = [2, 3, 4, 5, 6]
 
     python_script_name = '../sphere2cup.py'
