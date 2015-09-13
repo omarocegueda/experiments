@@ -1,6 +1,7 @@
 import sys
 import os
 from experiments.registration.split_tools import (mkdir_p)
+import subprocess
 step_length_list = [25, 35, 45, 55, 65, 75]
 inv_iter_list = [20, 40, 100, 200]
 inv_tol_list = [2, 3, 4, 5, 6]
