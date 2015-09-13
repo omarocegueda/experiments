@@ -38,4 +38,9 @@ elif cmd == 'c':
         if not cleanAnyway:
             sys.exit(0)
     clean_working_dirs()
-    sys.exit(0)
+elif cmd == 'u':
+    dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
+    for name in dirNames:
+        os.chdir('./'+name)
+        subprocess.call('qsub job*.sh -d . -q batch', shell=True)
+        os.chdir('./..')
