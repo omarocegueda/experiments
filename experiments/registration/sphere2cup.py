@@ -11,7 +11,7 @@ from dipy.data import get_data
 import time
 import numpy as np
 def get_deformed_grid(field, zlist=None, npoints=None, x0=None, x1=None, y0=None, y1=None):
-    field = np.array(field, dtype=np.flaot64)
+    field = np.array(field, dtype=np.float64)
     if x0 is None:
         x0 = 0
     if y0 is None:
