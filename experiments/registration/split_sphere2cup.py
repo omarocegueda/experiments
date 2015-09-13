@@ -7,6 +7,7 @@ inv_iter_list = [20, 40, 100, 200]
 inv_tol_list = [2, 3, 4, 5, 6]
 
 python_script_name = '../sphere2cup.py'
+cluster_job_name = '../job_sphere2cup.sh'
 configname = 'config.txt'
 idx = 0
 for step_length_100 in step_length_list:
@@ -20,6 +21,7 @@ for step_length_100 in step_length_list:
             mkdir_p(dirname)
             
             subprocess.call('ln '+python_script_name+' '+dirname, shell=True)
+            subprocess.call('ln '+cluster_job_name+' '+dirname, shell=True)
             
             with open(os.path.join(dirname, configname), 'w') as f:
                 f.write('experiment_name\t%s\n'%(run_name,))
