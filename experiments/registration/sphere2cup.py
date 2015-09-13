@@ -91,7 +91,7 @@ fwd = np.array(mapping.forward)
 bwd = np.array(mapping.backward)
 
 # Get deformed mid slices
-z0 = v.shape[2]//2
+z0 = fwd.shape[2]//2
 whlines, wvlines = get_deformed_grid(fwd, [z0])
 fwd_fname = 'fwd_lines_%s.npy'%(experiment_name,)
 pickle.dump((whlines, wvlines), open(fwd_fname,'wb'))
