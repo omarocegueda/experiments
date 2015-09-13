@@ -44,3 +44,8 @@ elif cmd == 'u':
         os.chdir('./'+name)
         subprocess.call('qsub job*.sh -d . -q batch', shell=True)
         os.chdir('./..')
+elif cmd == 'o':
+    mkdir_p('results')
+    dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
+    for name in dirNames:
+        subprocess.call('mv '+os.path.join(name,'*.p')+' results', shell=True)

@@ -75,7 +75,8 @@ inv_tol = float(options.get('inv_tol', '1e-3'))
 inv_iter = int(options.get('inv_iter', '20'))
 experiment_name = options.get('experiment_name')
 
-level_iters = [200, 100, 50, 25]
+#level_iters = [200, 100, 50, 25]
+level_iters = [1, 0, 0, 0]
 dim = 3
 metric = SSDMetric(dim, smooth=3)
 sdr = SymmetricDiffeomorphicRegistration(metric, level_iters, inv_iter=inv_iter, inv_tol=inv_tol, opt_tol=1e-6, step_length=step_length, ss_sigma_factor=0.2)
@@ -93,10 +94,10 @@ bwd = np.array(mapping.backward)
 # Get deformed mid slices
 z0 = fwd.shape[2]//2
 whlines, wvlines = get_deformed_grid(fwd, [z0])
-fwd_fname = 'fwd_lines_%s.npy'%(experiment_name,)
+fwd_fname = 'fwd_lines_%s.p'%(experiment_name,)
 pickle.dump((whlines, wvlines), open(fwd_fname,'wb'))
 
 
 whlines, wvlines = get_deformed_grid(bwd, [z0])
-bwd_fname = 'bwd_lines_%s.npy'%(experiment_name,)
+bwd_fname = 'bwd_lines_%s.p'%(experiment_name,)
 pickle.dump((whlines, wvlines), open(bwd_fname,'wb'))
