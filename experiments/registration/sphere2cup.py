@@ -1,6 +1,5 @@
 import os
 import pickle
-from mayavi import mlab
 from dipy.align import VerbosityLevels
 from dipy.align.metrics import SSDMetric
 from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
