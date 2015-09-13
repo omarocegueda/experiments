@@ -9,6 +9,7 @@ from experiments.registration.images2gif import writeGif
 from inverse.dfinverse_3d import warp_points_3d, revolution_solid
 from dipy.data import get_data
 import time
+import numpy as np
 def get_deformed_grid(field, zlist=None, npoints=None, x0=None, x1=None, y0=None, y1=None):
     if x0 is None:
         x0 = 0
