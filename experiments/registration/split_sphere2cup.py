@@ -2,6 +2,7 @@ import sys
 import os
 from experiments.registration.split_tools import (mkdir_p, clean_working_dirs, query_yes_no)
 import subprocess
+import fnmatch
 
 cmd = sys.argv[1]
 if cmd == 's':
