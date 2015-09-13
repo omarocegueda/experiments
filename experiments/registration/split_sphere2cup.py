@@ -18,7 +18,7 @@ for step_length_100 in step_length_list:
             dirname = '%03d'%(idx)
             mkdir_p(dirname)
             
-            #subprocess.call('ln '+python_script_name+' '+dirname, shell=True)
+            subprocess.call('ln '+python_script_name+' '+dirname, shell=True)
             
             with open(os.path.join(dirname, configname), 'w') as f:
                 f.write('experiment_name\t%s\n'%(run_name,))
