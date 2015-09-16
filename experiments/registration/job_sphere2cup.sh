@@ -19,5 +19,6 @@ echo "====Experiments commit===="
 (cd $EXPERIMENTS_DIR && git branch|grep "*")
 (cd $EXPERIMENTS_DIR && git show --stat|grep "commit\|Date")
 echo "======================"
+lscpu
 date
 python sphere2cup.py

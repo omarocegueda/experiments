@@ -19,6 +19,7 @@ echo "====Experiments commit===="
 (cd $EXPERIMENTS_DIR && git branch|grep "*")
 (cd $EXPERIMENTS_DIR && git show --stat|grep "commit\|Date")
 echo "======================"
+lscpu
 date
 ref_fixed=$(ls {ref_fixed/*.nii.gz,ref_fixed/*.img} 2>/dev/null | xargs -n1 basename)
 ref_moving=$(ls {ref_moving/*.nii.gz,ref_moving/*.img} 2>/dev/null | xargs -n1 basename)
