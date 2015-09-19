@@ -100,3 +100,8 @@ pickle.dump((whlines, wvlines), open(fwd_fname,'wb'))
 whlines, wvlines = get_deformed_grid(bwd, [z0])
 bwd_fname = 'bwd_lines_%s.p'%(experiment_name,)
 pickle.dump((whlines, wvlines), open(bwd_fname,'wb'))
+
+wm = np.array(mapping.transform(sphere))
+ws = np.array(mapping.transform_inverse(cup))
+np.save('warped_sphere_%s.py'%(experiment_name,), wm)
+np.save('warped_bowl_%s.py'%(experiment_name,), ws)
