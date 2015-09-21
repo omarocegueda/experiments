@@ -458,7 +458,7 @@ def register_3d(params):
     ss_sigma_factor = float(params.ss_sigma_factor)
     registration_optimizer = imwarp.SymmetricDiffeomorphicRegistration(
         similarity_metric, opt_iter, step_length, ss_sigma_factor, opt_tol, inv_iter, inv_tol, None)
-
+    print('Inversion type: %s'%(registration_optimizer.inv_type,))
     #Load the data
     moving, moving_affine = load_nifti(params.target)
     fixed, fixed_affine = load_nifti(params.reference)
