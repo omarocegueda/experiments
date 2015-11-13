@@ -451,16 +451,213 @@ def compute_transfer_value_and_gradient(double[:] f, int[:,:,:] labels, int nlab
                         gamma += K[i] * f[i] * f[i]
 
                     delta = n * gamma - beta * beta
-                    
+
                     if delta<1e-4:# too small
                         continue
 
                     nwindows += 1
-                    
+
                     # Compute contribution of this window to the total energy
                     num = n*alpha*alpha - 2.0*alpha*beta*sx + gamma*sx*sx
                     energy += sx2 - num/delta
-                    
+
+                    # Compute contribution of this window to the gradient
+                    for i in range(0, nlabels):
+                        contrib = 2*(n*alpha*A[i] - sx*(alpha*K[i]+beta*A[i]) + sx*sx*K[i]*f[i])*delta - 2*num*(n*K[i]*f[i] - beta*K[i])
+                        grad[i] -= contrib/(delta*delta)
+        energy /= nwindows
+        for i in range(nlabels):
+            grad[i] /= nwindows
+    return energy, grad
+
+
+def get_compressed_transfer(int[:,:,:] A, double[:,:,:] B):
+    cdef:
+        int ns = A.shape[0]
+        int nr = A.shape[1]
+        int nc = A.shape[2]
+        int s,r,c, lab, i, l
+        int[:] val_lab_map
+        int[:] cnt
+        double[:] means
+        double[:] vars
+        int[:,:,:] newA = np.empty((ns, nr, nc), dtype=np.int32)
+
+    labels = np.unique(A)
+    nlabels = len(labels)
+    max_lab = np.max(A)
+    val_lab_map = np.empty(1 + max_lab, dtype=np.int32)
+    cnt = np.zeros(nlabels, dtype=np.int32)
+    means = np.zeros(nlabels, dtype=np.float64)
+    vars = np.zeros(nlabels, dtype=np.float64)
+
+    for i,l in enumerate(labels):
+        val_lab_map[l] = i
+
+    with nogil:
+        for s in range(ns):
+            for r in range(nr):
+                for c in range(nc):
+                    lab = val_lab_map[A[s,r,c]]
+                    newA[s,r,c] = lab
+                    means[lab] += B[s,r,c]
+                    vars[lab] += B[s,r,c] * B[s,r,c]
+                    cnt[lab] += 1
+        for lab in range(nlabels):
+            means[lab]/=cnt[lab]
+            vars[lab] = vars[lab]/cnt[lab] - (means[lab]*means[lab])
+
+    return np.array(means), np.array(vars), np.array(cnt), np.array(newA)
+
+
+cdef inline int _mod(int x, int m)nogil:
+    if x<0:
+        return x + m
+    return x
+
+
+cdef _add_elementary_vector(double y, int g, double[:,:,:,:] A, int[:,:,:,:] K,
+                            double[:,:,:,:] S, int ss, int rr, int cc, int weight)nogil:
+    if weight == 0:
+        A[ss, rr, cc, g] = y
+        K[ss, rr, cc, g] = 1
+        S[sss, rr, cc, 0] = y
+        S[sss, rr, cc, 1] = y*y
+    elif weight == 1:
+        A[ss, rr, cc, g] += y
+        K[ss, rr, cc, g] += 1
+        S[sss, rr, cc, 0] += y
+        S[sss, rr, cc, 1] += y*y
+    else:
+        A[ss, rr, cc, g] -= y
+        K[ss, rr, cc, g] -= 1
+        S[sss, rr, cc, 0] -= y
+        S[sss, rr, cc, 1] -= y*y
+
+
+cdef _update_factors(double[:,:,:,:] A, double[:,:,:,:] K, double[:,:,:,:] S,
+                     int sss, int rr, int cc, int prev_s, int prev_r,
+                     int prev_c, int weight)nogil:
+    cdef:
+        int nlabels = A.shape[3]
+        int idx
+    if weight == -1:
+        S[sss, rr, cc, 0] += S[prev_ss, prev_rr, prev_cc, 0]
+        S[sss, rr, cc, 1] += S[prev_ss, prev_rr, prev_cc, 1]
+        for idx in range(nlabels):
+            A[sss, rr, cc, idx] += A[prev_ss, prev_rr, prev_cc, idx]
+            K[sss, rr, cc, idx] += K[prev_ss, prev_rr, prev_cc, idx]
+
+    else:
+        for idx in range(nlabels):
+            A[sss, rr, cc, idx] += A[prev_ss, prev_rr, prev_cc, idx]
+            K[sss, rr, cc, idx] += K[prev_ss, prev_rr, prev_cc, idx]
+
+
+def centered_transfer_value_and_gradient(double[:] f, int[:,:,:] labels, int nlabels, double[:,:,:] y, int radius):
+    """ Computes the value and gradient of the ECC energy w.r.t. the transfer function
+    The execution time is Theta(N^3 * L), where N^3 is the number of voxels and L is
+    the number of quantization levels
+
+    """
+    cdef:
+        int ns = labels.shape[0]
+        int nr = labels.shape[1]
+        int nc = labels.shape[2]
+        int side = 2 * radius + 1
+        int n = side * side * side
+        int s, r, c, sss, ss, rr, cc, sides, sider, sidec
+        int k, i, j, start_k, end_k, start_i, end_i, start_j, end_j
+        int firsts, firstr, firstc, lasts, lastr, lastc
+        int cnt, nwindows, idx
+        double energy, num, delta, contrib
+        double sx, sx2, alpha, beta, gamma
+        int[:,:,:,:] K = np.ndarray((2, nr, nc, nlabels,), dtype=np.int32)
+        double[:,:,:,:] A = np.ndarray((2, nr, nc, nlabels,), dtype=np.float64)
+        double[:,:,:,:] S = np.ndarray((2, nr, nc, 2,), dtype=np.float64)
+        double[:] grad = np.ndarray((nlabels,), dtype=np.float64)
+
+    with nogil:
+        sss = 1
+        for s in range(ns+radius):
+            ss = _mod(s - radius, ns)
+            sss = 1 - sss
+            firsts = _int_max(0, ss - radius)
+            lasts = _int_min(ns - 1, ss + radius)
+            sides = (lasts - firsts + 1)
+            for r in range(nr+radius):
+                rr = _mod(r - radius, nr)
+                firstr = _int_max(0, rr - radius)
+                lastr = _int_min(nr - 1, rr + radius)
+                sider = (lastr - firstr + 1)
+                for c in range(nc+radius):
+                    cc = _mod(c - radius, nc)
+                    # New corner
+                    _add_elementary_vector(y[s, r, c], labels[s, r, c], A, K, S, sss, rr, cc, 0)
+                    # Add signed sub-volumes
+                    if s>0:
+                        prev_ss = 1 - sss
+                        _update_factors(A, K, S, sss, rr, cc, prev_ss, rr, cc, 1)
+                        if r>0:
+                            prev_rr = _mod(rr-1, nr)
+                            _update_factors(A, K, S, sss, rr, cc, prev_ss, prev_rr, cc, -1)
+                            if c>0:
+                                prev_cc = _mod(cc-1, nc)
+                                _update_factors(A, K, S, sss, rr, cc, prev_ss, prev_rr, prev_cc, 1)
+                        if c>0:
+                            prev_cc = _mod(cc-1, nc)
+                            _update_factors(A, K, S, sss, rr, cc, prev_ss, rr, prev_cc, -1)
+                    if(r>0):
+                        prev_rr = _mod(rr-1, nr)
+                        _update_factors(A, K, S, sss, rr, cc, sss, prev_rr, cc, 1)
+                        if(c>0):
+                            prev_cc = _mod(cc-1, nc)
+                            _update_factors(A, K, S, sss, rr, cc, sss, prev_rr, prev_cc, -1)
+                    if(c>0):
+                        prev_cc = _mod(cc-1, nc)
+                        _update_factors(A, K, S, sss, rr, cc, sss, rr, prev_cc, 1)
+                    # Add signed corners
+                    if s>=side:
+                        _add_elementary_vector(y[s-side, r, c], labels[s-side, r, c], A, K, S, sss, rr, cc, -1)
+                        if r>=side:
+                            _add_elementary_vector(y[s-side, r-side, c], labels[s-side, r-side, c], A, K, S, sss, rr, cc, 1)
+                            if c>=side:
+                                _add_elementary_vector(y[s-side, r-side, c-side], labels[s-side, r-side, c-side], A, K, S, sss, rr, cc, -1)
+                        if c>=side:
+                            _add_elementary_vector(y[s-side, r, c-side], labels[s-side, r, c-side], A, K, S, sss, rr, cc, 1)
+                    if r>=side:
+                        _add_elementary_vector(y[s, r-side, c], labels[s, r-side, c], A, K, S, sss, rr, cc, -1)
+                        if c>=side:
+                            _add_elementary_vector(y[s, r-side, c-side], labels[s, r-side, c-side], A, K, S, sss, rr, cc, 1)
+                    if c>=side:
+                        _add_elementary_vector(y[s, r, c-side], labels[s, r, c-side], A, K, S, sss, rr, cc, -1)
+
+                    if s>=radius and r>=radius and c>=radius:
+                        firstc = _int_max(0, cc - radius)
+                        lastc = _int_min(nc - 1, cc + radius)
+                        sidec = (lastc - firstc + 1)
+                        cnt = sides*sider*sidec
+                        # Compute contribution of this window to the total energy
+                        double prod_af, muJ, ftDf, ftk
+
+                        muJ = S[sss, rr, cc, 0]/cnt
+                        prod_af = 0
+                        ftDf = 0
+                        ftk = 0
+
+                        for idx in range(nlabels):
+                            prod_af += (A[sss, rr, cc, idx] - muJ) * f[idx]
+                            ftDf += f[idx] * f[idx] * K[sss, rr, cc, idx]
+                            ftk += f[idx] * K[sss, rr, cc, idx]
+
+
+
+
+
+
+                    num = n*alpha*alpha - 2.0*alpha*beta*sx + gamma*sx*sx
+                    energy += sx2 - num/delta
+
                     # Compute contribution of this window to the gradient
                     for i in range(0, nlabels):
                         contrib = 2*(n*alpha*A[i] - sx*(alpha*K[i]+beta*A[i]) + sx*sx*K[i]*f[i])*delta - 2*num*(n*K[i]*f[i] - beta*K[i])
