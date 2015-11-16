@@ -516,42 +516,51 @@ cdef inline int _mod(int x, int m)nogil:
     return x
 
 
-cdef _add_elementary_vector(double y, int g, double[:,:,:,:] A, int[:,:,:,:] K,
+cdef void _add_elementary_vector(double y, int g, double[:,:,:,:] A, int[:,:,:,:] K,
                             double[:,:,:,:] S, int ss, int rr, int cc, int weight)nogil:
+    cdef:
+        int nlabels = A.shape[3]
+        int idx
     if weight == 0:
+        S[ss, rr, cc, 0] = y
+        S[ss, rr, cc, 1] = y*y
+        for idx in range(nlabels):
+            A[ss, rr, cc, idx] = 0
+            K[ss, rr, cc, idx] = 0
         A[ss, rr, cc, g] = y
         K[ss, rr, cc, g] = 1
-        S[sss, rr, cc, 0] = y
-        S[sss, rr, cc, 1] = y*y
+
     elif weight == 1:
         A[ss, rr, cc, g] += y
         K[ss, rr, cc, g] += 1
-        S[sss, rr, cc, 0] += y
-        S[sss, rr, cc, 1] += y*y
+        S[ss, rr, cc, 0] += y
+        S[ss, rr, cc, 1] += y*y
     else:
         A[ss, rr, cc, g] -= y
         K[ss, rr, cc, g] -= 1
-        S[sss, rr, cc, 0] -= y
-        S[sss, rr, cc, 1] -= y*y
+        S[ss, rr, cc, 0] -= y
+        S[ss, rr, cc, 1] -= y*y
 
 
-cdef _update_factors(double[:,:,:,:] A, double[:,:,:,:] K, double[:,:,:,:] S,
-                     int sss, int rr, int cc, int prev_s, int prev_r,
-                     int prev_c, int weight)nogil:
+cdef void _update_factors(double[:,:,:,:] A, int[:,:,:,:] K, double[:,:,:,:] S,
+                     int ss, int rr, int cc, int prev_ss, int prev_rr,
+                     int prev_cc, int weight)nogil:
     cdef:
         int nlabels = A.shape[3]
         int idx
     if weight == -1:
-        S[sss, rr, cc, 0] += S[prev_ss, prev_rr, prev_cc, 0]
-        S[sss, rr, cc, 1] += S[prev_ss, prev_rr, prev_cc, 1]
+        S[ss, rr, cc, 0] -= S[prev_ss, prev_rr, prev_cc, 0]
+        S[ss, rr, cc, 1] -= S[prev_ss, prev_rr, prev_cc, 1]
         for idx in range(nlabels):
-            A[sss, rr, cc, idx] += A[prev_ss, prev_rr, prev_cc, idx]
-            K[sss, rr, cc, idx] += K[prev_ss, prev_rr, prev_cc, idx]
+            A[ss, rr, cc, idx] -= A[prev_ss, prev_rr, prev_cc, idx]
+            K[ss, rr, cc, idx] -= K[prev_ss, prev_rr, prev_cc, idx]
 
     else:
+        S[ss, rr, cc, 0] += S[prev_ss, prev_rr, prev_cc, 0]
+        S[ss, rr, cc, 1] += S[prev_ss, prev_rr, prev_cc, 1]
         for idx in range(nlabels):
-            A[sss, rr, cc, idx] += A[prev_ss, prev_rr, prev_cc, idx]
-            K[sss, rr, cc, idx] += K[prev_ss, prev_rr, prev_cc, idx]
+            A[ss, rr, cc, idx] += A[prev_ss, prev_rr, prev_cc, idx]
+            K[ss, rr, cc, idx] += K[prev_ss, prev_rr, prev_cc, idx]
 
 
 def centered_transfer_value_and_gradient(double[:] f, int[:,:,:] labels, int nlabels, double[:,:,:] y, int radius):
@@ -567,30 +576,34 @@ def centered_transfer_value_and_gradient(double[:] f, int[:,:,:] labels, int nla
         int side = 2 * radius + 1
         int n = side * side * side
         int s, r, c, sss, ss, rr, cc, sides, sider, sidec
-        int k, i, j, start_k, end_k, start_i, end_i, start_j, end_j
         int firsts, firstr, firstc, lasts, lastr, lastc
-        int cnt, nwindows, idx
-        double energy, num, delta, contrib
-        double sx, sx2, alpha, beta, gamma
-        int[:,:,:,:] K = np.ndarray((2, nr, nc, nlabels,), dtype=np.int32)
-        double[:,:,:,:] A = np.ndarray((2, nr, nc, nlabels,), dtype=np.float64)
-        double[:,:,:,:] S = np.ndarray((2, nr, nc, 2,), dtype=np.float64)
-        double[:] grad = np.ndarray((nlabels,), dtype=np.float64)
+        int cnt, nwindows, idx, k
+        double dotprod, qform, sqnorm, mu, ftDf, ftk, a_prime, den, energy
+        int[:,:,:,:] K = np.zeros((2, nr, nc, nlabels,), dtype=np.int32)
+        double[:,:,:,:] A = np.zeros((2, nr, nc, nlabels,), dtype=np.float64)
+        double[:,:,:,:] S = np.zeros((2, nr, nc, 2,), dtype=np.float64)
+        double[:] grad = np.zeros((nlabels,), dtype=np.float64)
 
     with nogil:
+        energy = 0
         sss = 1
-        for s in range(ns+radius):
+        nwindows = 0
+        for s in range(ns):
             ss = _mod(s - radius, ns)
             sss = 1 - sss
             firsts = _int_max(0, ss - radius)
             lasts = _int_min(ns - 1, ss + radius)
             sides = (lasts - firsts + 1)
-            for r in range(nr+radius):
+            #with gil:
+            #    print('%f, %f, %f, %f, %f, %f, %f'%(np.max(A), np.max(A), np.min(f), np.max(f), dotprod, den, energy))
+            for r in range(nr):
                 rr = _mod(r - radius, nr)
                 firstr = _int_max(0, rr - radius)
                 lastr = _int_min(nr - 1, rr + radius)
                 sider = (lastr - firstr + 1)
-                for c in range(nc+radius):
+                for c in range(nc):
+                    #with gil:
+                    #    print('%d, %d, %d'%(s,r,c))
                     cc = _mod(c - radius, nc)
                     # New corner
                     _add_elementary_vector(y[s, r, c], labels[s, r, c], A, K, S, sss, rr, cc, 0)
@@ -632,37 +645,155 @@ def centered_transfer_value_and_gradient(double[:] f, int[:,:,:] labels, int nla
                     if c>=side:
                         _add_elementary_vector(y[s, r, c-side], labels[s, r, c-side], A, K, S, sss, rr, cc, -1)
 
-                    if s>=radius and r>=radius and c>=radius:
+                    if ss>=radius and rr>=radius and cc>=radius and ss<ns-radius and rr<nr-radius and cc<nc-radius:
                         firstc = _int_max(0, cc - radius)
                         lastc = _int_min(nc - 1, cc + radius)
                         sidec = (lastc - firstc + 1)
                         cnt = sides*sider*sidec
-                        # Compute contribution of this window to the total energy
-                        double prod_af, muJ, ftDf, ftk
+                        if cnt<side*side*side:
+                            with gil:
+                                print('Error %d.'%(cnt,))
+                        nwindows += 1
 
-                        muJ = S[sss, rr, cc, 0]/cnt
-                        prod_af = 0
+                        mu = S[sss, rr, cc, 0]/cnt
+                        sqnorm = S[sss, rr, cc, 1] - cnt*mu*mu
+
+                        dotprod = 0
                         ftDf = 0
                         ftk = 0
+                        #with gil:
+                        #    print('%f, %f, %d, %f'%(np.max(f), np.max(A[sss, rr, cc, :]), np.max(K[sss, rr, cc, :]), mu))
 
                         for idx in range(nlabels):
-                            prod_af += (A[sss, rr, cc, idx] - muJ) * f[idx]
-                            ftDf += f[idx] * f[idx] * K[sss, rr, cc, idx]
-                            ftk += f[idx] * K[sss, rr, cc, idx]
+                            if K[sss, rr, cc, idx]>0:
+                                # a_{v,g}' = a_{v,g} - k_{v,g}*mu
+                                a_prime = A[sss, rr, cc, idx] - mu * K[sss, rr, cc, idx]
+                                dotprod += a_prime * f[idx]
+                                ftDf += f[idx] * f[idx] * K[sss, rr, cc, idx]
+                                ftk += f[idx] * K[sss, rr, cc, idx]
 
+                        qform = (ftDf - ftk*ftk/cnt)
+                        den = qform * sqnorm
+                        if den < 1e-4:
+                            continue
 
-
-
-
-
-                    num = n*alpha*alpha - 2.0*alpha*beta*sx + gamma*sx*sx
-                    energy += sx2 - num/delta
-
-                    # Compute contribution of this window to the gradient
-                    for i in range(0, nlabels):
-                        contrib = 2*(n*alpha*A[i] - sx*(alpha*K[i]+beta*A[i]) + sx*sx*K[i]*f[i])*delta - 2*num*(n*K[i]*f[i] - beta*K[i])
-                        grad[i] -= contrib/(delta*delta)
+                        energy += (dotprod*dotprod) / den
+                        # Compute contribution of this window to the energy and gradient
+                        for idx in range(nlabels):
+                            k = K[sss, rr, cc, idx]
+                            if k>0:
+                                a_prime = A[sss, rr, cc, idx] - mu * k
+                                qform = (ftDf - ftk * ftk / cnt)
+                                grad[idx] += (dotprod/den) * (a_prime - (dotprod/qform)*k*(f[idx] - ftk/n))
         energy /= nwindows
-        for i in range(nlabels):
-            grad[i] /= nwindows
+        for idx in range(nlabels):
+            grad[idx] = 2.0 * grad[idx] / nwindows
+    return energy, grad
+
+
+
+def centered_transfer_value_and_gradient_slow(double[:] f, int[:,:,:] labels, int nlabels, double[:,:,:] y, int radius):
+    """ Computes the value and gradient of the ECC energy w.r.t. the transfer function
+    The execution time is Theta(N^3 * L), where N^3 is the number of voxels and L is
+    the number of quantization levels
+
+    """
+    cdef:
+        int ns = labels.shape[0]
+        int nr = labels.shape[1]
+        int nc = labels.shape[2]
+        int side = 2 * radius + 1
+        int n = side * side * side
+        int s, r, c, sss, ss, rr, cc, sides, sider, sidec
+        int firsts, firstr, firstc, lasts, lastr, lastc
+        int cnt, nwindows, idx, i,j,k
+        double dotprod, qform, sqnorm, mu, ftDf, ftk, a_prime, den, energy
+        double sx, sx2
+        int[:,:,:,:] K = np.zeros((2, nr, nc, nlabels,), dtype=np.int32)
+        double[:,:,:,:] A = np.zeros((2, nr, nc, nlabels,), dtype=np.float64)
+        double[:] grad = np.zeros((nlabels,), dtype=np.float64)
+
+    with nogil:
+        energy = 0
+        sss = 1
+        nwindows = 0
+        for s in range(ns):
+            ss = _mod(s - radius, ns)
+            sss = 1 - sss
+            firsts = _int_max(0, ss - radius)
+            lasts = _int_min(ns - 1, ss + radius)
+            sides = (lasts - firsts + 1)
+            #with gil:
+            #    print('%f, %f, %f, %f, %f, %f, %f'%(np.max(A), np.max(A), np.min(f), np.max(f), dotprod, den, energy))
+            for r in range(nr):
+                rr = _mod(r - radius, nr)
+                firstr = _int_max(0, rr - radius)
+                lastr = _int_min(nr - 1, rr + radius)
+                sider = (lastr - firstr + 1)
+                for c in range(nc):
+                    #with gil:
+                    #    print('%d, %d, %d'%(s,r,c))
+                    cc = _mod(c - radius, nc)
+                    A[sss,rr,cc,:] = 0
+                    K[sss,rr,cc,:] = 0
+                    # Compute stats for this window
+                    start_k = _int_max(0, ss - radius)
+                    end_k = _int_min(ns, 1 + ss + radius)
+                    sx = 0
+                    sx2 = 0
+                    cnt = 0
+                    for k in range(start_k, end_k):
+                        start_i = _int_max(0, rr - radius)
+                        end_i = _int_min(nr, 1 + rr + radius)
+                        for i in range(start_i, end_i):
+                            start_j = _int_max(0, cc - radius)
+                            end_j = _int_min(nc, 1 + cc + radius)
+                            for j in range(start_j, end_j):
+                                sx += y[k, i, j]
+                                sx2 += y[k, i, j] * y[k, i, j]
+                                A[sss,rr,cc,labels[k, i, j]]+= y[k, i, j]
+                                K[sss,rr,cc,labels[k, i, j]] += 1
+                                cnt += 1
+                    if cnt < n:
+                        continue
+
+                    if ss>=radius and rr>=radius and cc>=radius and ss<ns-radius and rr<nr-radius and cc<nc-radius:
+                        firstc = _int_max(0, cc - radius)
+                        lastc = _int_min(nc - 1, cc + radius)
+                        sidec = (lastc - firstc + 1)
+                        nwindows += 1
+
+                        mu = sx/cnt
+                        sqnorm = sx2 - cnt*mu*mu
+
+                        dotprod = 0
+                        ftDf = 0
+                        ftk = 0
+                        #with gil:
+                        #    print('%f, %f, %d, %f'%(np.max(f), np.max(A[sss, rr, cc, :]), np.max(K[sss, rr, cc, :]), mu))
+
+                        for idx in range(nlabels):
+                            if K[sss, rr, cc, idx]>0:
+                                # a_{v,g}' = a_{v,g} - k_{v,g}*mu
+                                a_prime = A[sss, rr, cc, idx] - mu * K[sss, rr, cc, idx]
+                                dotprod += a_prime * f[idx]
+                                ftDf += f[idx] * f[idx] * K[sss, rr, cc, idx]
+                                ftk += f[idx] * K[sss, rr, cc, idx]
+
+                        qform = (ftDf - ftk*ftk/cnt)
+                        den = qform * sqnorm
+                        if den < 1e-4:
+                            continue
+
+                        energy += (dotprod*dotprod) / den
+                        # Compute contribution of this window to the energy and gradient
+                        for idx in range(nlabels):
+                            k = K[sss, rr, cc, idx]
+                            if k>0:
+                                a_prime = A[sss, rr, cc, idx] - mu * k
+                                qform = (ftDf - ftk * ftk / cnt)
+                                grad[idx] += (dotprod/den) * (a_prime - (dotprod/qform)*k*(f[idx] - ftk/n))
+        energy /= nwindows
+        for idx in range(nlabels):
+            grad[idx] = 2.0 * grad[idx] / nwindows
     return energy, grad
