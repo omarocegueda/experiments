@@ -126,6 +126,13 @@ parser.add_argument(
         to be used to compute the Cross Correlation at each voxel qLevels:
         number of quantization levels (hidden variables) in the ECC formulation
         e.g.:CC[3.0,4,256] (NO SPACES)
+    POLY[degree,sigma_smooth,qLevels,cprop,dropZeros]
+        degree: polynomial transfer degree
+        sigma_smooth: std. dev. of the smoothing kernel to be used to smooth the
+        gradient at each step
+        qLevels: number of quantization levels (-1 for no quantization)
+        cprop: proportion (0,1] of samples to fit the transfer 
+        dropZeros: either 0(False) or 1(True). Disregard zeros for polynomial fitting
     ''',
     default = 'CC[3.0,4]')
 
@@ -428,6 +435,16 @@ def register_3d(params):
         similarity_metric = metrics.EMMetric(
             3, smooth, inner_iter, q_levels, double_gradient, iter_type)
         similarity_metric.mask0 = params.mask0
+    elif metric_name=='POLY':
+        print('>>>>>>>>>>>>>>>>OK<<<<<<<<<<<<<')
+        from dipy.align.polynomial import PolynomialTransfer
+        degree=int(metric_params_list[0])
+        smooth=float(metric_params_list[1])
+        q_levels=int(metric_params_list[2])
+        cprop=float(metric_params_list[3])
+        drop_zeros=int(metric_params_list[4])!=0
+        similarity_metric = PolynomialTransfer(3, degree, smooth, q_levels, cprop, drop_zeros)
+        similarity_metric.mask0 = params.mask0
     elif metric_name=='CC':
         sigma_diff = float(metric_params_list[0])
         radius = int(metric_params_list[1])
@@ -458,7 +475,8 @@ def register_3d(params):
     ss_sigma_factor = float(params.ss_sigma_factor)
     registration_optimizer = imwarp.SymmetricDiffeomorphicRegistration(
         similarity_metric, opt_iter, step_length, ss_sigma_factor, opt_tol, inv_iter, inv_tol, None)
-    print('Inversion type: %s'%(registration_optimizer.inv_type,))
+    if hasattr(registration_optimizer, 'inv_type'):
+        print('Inversion type: %s'%(registration_optimizer.inv_type,))
     #Load the data
     moving, moving_affine = load_nifti(params.target)
     fixed, fixed_affine = load_nifti(params.reference)
