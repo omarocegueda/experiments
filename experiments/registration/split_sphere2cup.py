@@ -6,9 +6,15 @@ import fnmatch
 
 cmd = sys.argv[1]
 if cmd == 's':
-    step_length_list = [15, 25, 35, 45]
-    inv_iter_list = [10, 20, 30, 40]
-    inv_tol_list = [2, 3, 4, 5, 6]
+    #step_length_list = [15, 25, 35, 45]
+    #step_length_list= [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
+    step_length_list = [30]
+    #inv_iter_list = [10, 20, 30, 40]
+    #inv_iter_list = [30]
+    inv_iter_list = [50]
+    #inv_tol_list = [2, 3, 4, 5, 6]
+    #inv_tol_list = [3]
+    inv_tol_list = range(1,21)
 
     python_script_name = '../sphere2cup.py'
     cluster_job_name = '../job_sphere2cup.sh'
@@ -18,7 +24,8 @@ if cmd == 's':
         for inv_iter in inv_iter_list:
             for inv_tol_exponent in inv_tol_list:
                 step_length = step_length_100 /100.0
-                inv_tol = float('1e-%d'%(inv_tol_exponent))
+                #inv_tol = float('1e-%d'%(inv_tol_exponent))
+                inv_tol = 1.0/(2**inv_tol_exponent)
                 run_name='%d_%03d_%d'%(step_length_100, inv_iter, inv_tol_exponent)
 
                 dirname = '%03d'%(idx)
