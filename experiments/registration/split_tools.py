@@ -213,9 +213,11 @@ def split_indirect_validation(labeled, unlabeled, required_files):
 
             for k in range(nunlabeled):
                 # For each unlabeled
-                strk='0'+str(k+1) if j+1<10 else str(k+1)
+                strk='0'+str(k+1) if k+1<10 else str(k+1)
 
                 dir_name=strj+'_'+stri+'_'+strk
+
+                print("Splitting: "+dir_name)
 
                 mkdir_p(os.path.join(dir_name,'ref_fixed'))
                 mkdir_p(os.path.join(dir_name,'ref_moving'))
