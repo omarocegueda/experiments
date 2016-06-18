@@ -6,7 +6,7 @@
 #PBS -l vmem=4GB
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=01:00:00
-#PBS -N seg-baseline
+#PBS -N seg-icm
 date
 img=$(ls {img/*.nii.gz,img/*.img} 2>/dev/null | xargs -n1 basename)
 seg=$(ls {seg/*.nii.gz,seg/*.img} 2>/dev/null | xargs -n1 basename)
