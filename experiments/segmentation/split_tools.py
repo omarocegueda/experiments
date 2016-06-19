@@ -119,7 +119,6 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
             os.chdir('./'+name)
             subprocess.call('qsub job*.sh -d . -q batch', shell=True)
             os.chdir('./..')
-        sys.exit(0)
     ############################Collect##################################
     elif argv[1]=='o':
         mkdir_p('results')
@@ -129,7 +128,6 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
             subprocess.call('mv '+os.path.join(name,'*.txt')+' results', shell=True)
             subprocess.call('mv '+os.path.join(name,'*.e*')+' results', shell=True)
             subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
-        sys.exit(0)
     ############################Unknown##################################
     else:
         print 'Unknown option "'+argv[1]+'". The available options are "(c)"lean, "(s)"plit, s"(u)"bmit, c"(o)"llect.'
