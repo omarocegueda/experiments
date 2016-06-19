@@ -67,7 +67,6 @@ def split_all_images(names, required_files):
     """
     nlines=len(names)
     for i in range(1, 1 + nlines):
-        print('Creating working directory for image: %s' % (names[i-1][0],))
         current_set = names[i-1]
         dir_name = "%02d" % (i)
 
@@ -100,9 +99,8 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
             if not cleanAnyway:
                 sys.exit(0)
         clean_working_dirs()
-        sys.exit(0)
     #############################Split####################################
-    if argv[1]=='s':
+    elif argv[1]=='s':
         if argc<3:
             print 'Please specify a text file containing the names of the files to segment'
             sys.exit(0)
@@ -114,9 +112,8 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
             sys.exit(0)
         names=[line.strip().split() for line in lines]
         split_all_images(names, required_files)
-        sys.exit(0)
     ############################Submit###################################
-    if argv[1]=='u':
+    elif argv[1]=='u':
         dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
         for name in dirNames:
             os.chdir('./'+name)
@@ -124,7 +121,7 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
             os.chdir('./..')
         sys.exit(0)
     ############################Collect##################################
-    if argv[1]=='o':
+    elif argv[1]=='o':
         mkdir_p('results')
         dirNames=[name for name in os.listdir(".") if os.path.isdir(name) and fnmatch.fnmatch(name, '[0-9]*')]
         for name in dirNames:
@@ -134,7 +131,8 @@ def split_script(argv, required_files, task_type='mono', mod1="", mod2=""):
             subprocess.call('mv '+os.path.join(name,'*.o*')+' results', shell=True)
         sys.exit(0)
     ############################Unknown##################################
-    print 'Unknown option "'+argv[1]+'". The available options are "(c)"lean, "(s)"plit, s"(u)"bmit, c"(o)"llect.'
+    else:
+        print 'Unknown option "'+argv[1]+'". The available options are "(c)"lean, "(s)"plit, s"(u)"bmit, c"(o)"llect.'
 
 
 def create_ibsr_names(base_dir):
